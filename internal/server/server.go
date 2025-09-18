@@ -11,15 +11,15 @@ import (
 type TaskStatus string
 
 const (
-	TaskStatusPending    TaskStatus = "pending"
-	TaskStatusInProgress TaskStatus = "working"
-	TaskStatusCompleted  TaskStatus = "completed"
-	TaskStatusFailed     TaskStatus = "failed"
+	TaskStatusPending   TaskStatus = "pending"
+	TaskStatusRunning   TaskStatus = "running"
+	TaskStatusCompleted TaskStatus = "completed"
+	TaskStatusFailed    TaskStatus = "failed"
 )
 
 func (ts TaskStatus) IsValid() bool {
 	switch ts {
-	case TaskStatusPending, TaskStatusInProgress, TaskStatusCompleted, TaskStatusFailed:
+	case TaskStatusPending, TaskStatusRunning, TaskStatusCompleted, TaskStatusFailed:
 		return true
 	}
 	return false
@@ -100,6 +100,19 @@ func New(databasePath string, nodeKeepaliveTimeout time.Duration) (*Server, erro
 		e:                    e,
 		d:                    d,
 		nodeKeepaliveTimeout: nodeKeepaliveTimeout,
+	}
+
+	// Ensure maps are initialized in the DB
+	if err := s.d.Write(func(data *Data) error {
+		if data.Task == nil {
+			data.Task = make(map[string]map[string]Task)
+		}
+		if data.Node == nil {
+			data.Node = make(map[string]Node)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	s.rNode()

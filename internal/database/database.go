@@ -5,10 +5,8 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"path"
+	"path/filepath"
 	"sync"
-
-	"github.com/google/uuid"
 )
 
 type DB[T any] struct {
@@ -44,10 +42,35 @@ func (db *DB[T]) Save() error {
 	if err != nil {
 		return err
 	}
-	temp := path.Join(os.TempDir(), uuid.NewString()+".json")
-	os.WriteFile(temp, bs, 0600)
 
-	return os.Rename(temp, db.path)
+	// Ensure target directory exists
+	dir := filepath.Dir(db.path)
+	if dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
+
+	// Write to a temp file in the same directory for atomic rename
+	f, err := os.CreateTemp(dir, "tmp-*.json")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(f.Name()) }()
+
+	if _, err := f.Write(bs); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	return os.Rename(f.Name(), db.path)
 }
 
 func (db *DB[T]) Read(fn func(data *T) error) error {
@@ -59,6 +82,10 @@ func (db *DB[T]) Read(fn func(data *T) error) error {
 func (db *DB[T]) Write(fn func(data *T) error) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
-	defer db.Save()
-	return fn(db.data)
+
+	if err := fn(db.data); err != nil {
+		return err
+	}
+
+	return db.Save()
 }

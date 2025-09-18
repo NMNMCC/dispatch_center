@@ -13,15 +13,23 @@ func (s *Server) rNode() {
 	s.e.HEAD("/node/keepalive", func(c echo.Context) error {
 		header := c.Request().Header
 		nid := header.Get("NodeID")
+		if nid == "" {
+			return echo.NewHTTPError(http.StatusBadRequest, "missing NodeID header")
+		}
 
-		s.d.Write(func(data *Data) error {
+		if err := s.d.Write(func(data *Data) error {
+			if data.Node == nil {
+				data.Node = make(map[string]Node)
+			}
 			data.Node[nid] = Node{
 				ID:            nid,
 				LastKeepalive: time.Now(),
 			}
 
 			return nil
-		})
+		}); err != nil {
+			return err
+		}
 
 		return c.NoContent(http.StatusOK)
 	})
@@ -30,6 +38,9 @@ func (s *Server) rNode() {
 	s.e.PUT("/node/report/:type/:task_id", func(c echo.Context) error {
 		header := c.Request().Header
 		nid := header.Get("NodeID")
+		if nid == "" {
+			return echo.NewHTTPError(http.StatusBadRequest, "missing NodeID header")
+		}
 
 		if err := s.d.Read(func(data *Data) error {
 			if _, ok := data.Node[nid]; !ok {
@@ -43,16 +54,15 @@ func (s *Server) rNode() {
 		ttype := c.Param("type")
 		tid := c.Param("task_id")
 		body, err := io.ReadAll(c.Request().Body)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
 		status := TaskStatus(body)
 		if !status.IsValid() {
 			return echo.NewHTTPError(http.StatusBadRequest, "invalid task status")
 		}
 
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
-
-		if err := s.d.Write(func(data *Data) error {
+	if err := s.d.Write(func(data *Data) error {
 			typedTask, ok := data.Task[ttype]
 			if !ok {
 				return echo.NewHTTPError(http.StatusNotFound)
@@ -84,6 +94,9 @@ func (s *Server) rNode() {
 		header := c.Request().Header
 		ttype := c.Param("type")
 		nid := header.Get("NodeID")
+		if nid == "" {
+			return echo.NewHTTPError(http.StatusBadRequest, "missing NodeID header")
+		}
 
 		if err := s.d.Read(func(data *Data) error {
 			if _, ok := data.Node[nid]; !ok {
@@ -94,15 +107,15 @@ func (s *Server) rNode() {
 			return err
 		}
 
-		var taskToRun *Task
+	var taskToRun Task
 		var found bool
 
-		if err := s.d.Write(func(data *Data) error {
+	if err := s.d.Write(func(data *Data) error {
 			// check if node already has a task
 			for _, task := range data.Task[ttype] {
 				if task.Locker == nid {
 					// The node is already working on a task, return the payload so it can continue
-					taskToRun = &task
+		    taskToRun = task
 					found = true
 					return nil
 				}
@@ -112,9 +125,9 @@ func (s *Server) rNode() {
 			for id, task := range data.Task[ttype] {
 				if task.Status == TaskStatusPending {
 					task.Locker = nid
-					task.Status = TaskStatusInProgress
+					task.Status = TaskStatusRunning
 					data.Task[ttype][id] = task
-					taskToRun = &task
+		    taskToRun = task
 					found = true
 					break
 				}
@@ -129,6 +142,6 @@ func (s *Server) rNode() {
 			return c.NoContent(http.StatusNotFound)
 		}
 
-		return c.JSON(http.StatusOK, taskToRun.Payload)
+	return c.JSON(http.StatusOK, taskToRun.Payload)
 	})
 }
