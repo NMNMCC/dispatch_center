@@ -1,7 +1,3 @@
 {
-    "cSpell.words": [
-        "kong",
-        "ttype",
-        "uuid"
-    ]
+  "cSpell.words": ["authhandler", "datasource", "oerr", "sqldb", "Stdlib", "uuid"]
 }

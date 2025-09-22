@@ -1,0 +1,10 @@
+{
+  "servers": {
+    "encore": {
+      "type": "stdio",
+      "command": "encore",
+      "args": ["mcp", "run", "--app=nh37q"]
+    }
+  },
+  "inputs": []
+}

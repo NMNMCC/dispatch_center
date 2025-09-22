@@ -1,0 +1,56 @@
+package main
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"os/exec"
+
+	"ariga.io/atlas/sql/sqltool"
+	"rezics.com/task-queue/service/task/ent/migrate"
+
+	"entgo.io/ent/dialect"
+	"entgo.io/ent/dialect/sql/schema"
+
+	_ "github.com/joho/godotenv/autoload"
+	_ "github.com/lib/pq"
+)
+
+func main() {
+	shadow := os.Getenv("SHADOW_DATABASE_URL")
+	if shadow == "" {
+		slog.Error("SHADOW_DATABASE_URL is not set")
+		return
+	}
+
+	reset := exec.Command("encore", "db", "reset", "--shadow", "--all")
+	if out, err := reset.CombinedOutput(); err != nil {
+		slog.Error("failed resetting shadow database", "error", err)
+		println(string(out))
+		return
+	}
+
+	if len(os.Args) != 2 {
+		slog.Error("migration name is required. Use: 'go run -mod=mod migrations/main.go <name>'")
+		return
+	}
+
+	ctx := context.Background()
+
+	dir, err := sqltool.NewGolangMigrateDir("./migrations")
+	if err != nil {
+		slog.Error("failed creating migration directory", "error", err)
+		return
+	}
+
+	opts := []schema.MigrateOption{
+		schema.WithDir(dir),                         // provide migration directory
+		schema.WithMigrationMode(schema.ModeReplay), // provide migration mode
+		schema.WithDialect(dialect.Postgres),        // Ent dialect to use
+	}
+
+	if err := migrate.NamedDiff(ctx, shadow, os.Args[1], opts...); err != nil {
+		slog.Error("failed generating migration file", "error", err)
+		return
+	}
+}
