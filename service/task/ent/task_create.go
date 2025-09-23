@@ -27,6 +27,26 @@ type TaskCreate struct {
 	conflict []sql.ConflictOption
 }
 
+// SetStatus sets the "status" field.
+func (_c *TaskCreate) SetStatus(v task.Status) *TaskCreate {
+	_c.mutation.SetStatus(v)
+	return _c
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_c *TaskCreate) SetNillableStatus(v *task.Status) *TaskCreate {
+	if v != nil {
+		_c.SetStatus(*v)
+	}
+	return _c
+}
+
+// SetBody sets the "body" field.
+func (_c *TaskCreate) SetBody(v json.RawMessage) *TaskCreate {
+	_c.mutation.SetBody(v)
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *TaskCreate) SetCreatedAt(v time.Time) *TaskCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -52,26 +72,6 @@ func (_c *TaskCreate) SetNillableUpdatedAt(v *time.Time) *TaskCreate {
 	if v != nil {
 		_c.SetUpdatedAt(*v)
 	}
-	return _c
-}
-
-// SetStatus sets the "status" field.
-func (_c *TaskCreate) SetStatus(v task.Status) *TaskCreate {
-	_c.mutation.SetStatus(v)
-	return _c
-}
-
-// SetNillableStatus sets the "status" field if the given value is not nil.
-func (_c *TaskCreate) SetNillableStatus(v *task.Status) *TaskCreate {
-	if v != nil {
-		_c.SetStatus(*v)
-	}
-	return _c
-}
-
-// SetBody sets the "body" field.
-func (_c *TaskCreate) SetBody(v json.RawMessage) *TaskCreate {
-	_c.mutation.SetBody(v)
 	return _c
 }
 
@@ -158,6 +158,10 @@ func (_c *TaskCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *TaskCreate) defaults() {
+	if _, ok := _c.mutation.Status(); !ok {
+		v := task.DefaultStatus
+		_c.mutation.SetStatus(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := task.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -165,10 +169,6 @@ func (_c *TaskCreate) defaults() {
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := task.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
-	}
-	if _, ok := _c.mutation.Status(); !ok {
-		v := task.DefaultStatus
-		_c.mutation.SetStatus(v)
 	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := task.DefaultID()
@@ -178,12 +178,6 @@ func (_c *TaskCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *TaskCreate) check() error {
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Task.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Task.updated_at"`)}
-	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Task.status"`)}
 	}
@@ -194,6 +188,12 @@ func (_c *TaskCreate) check() error {
 	}
 	if _, ok := _c.mutation.Body(); !ok {
 		return &ValidationError{Name: "body", err: errors.New(`ent: missing required field "Task.body"`)}
+	}
+	if _, ok := _c.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Task.created_at"`)}
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Task.updated_at"`)}
 	}
 	return nil
 }
@@ -231,14 +231,6 @@ func (_c *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 		_node.ID = id
 		_spec.ID.Value = &id
 	}
-	if value, ok := _c.mutation.CreatedAt(); ok {
-		_spec.SetField(task.FieldCreatedAt, field.TypeTime, value)
-		_node.CreatedAt = value
-	}
-	if value, ok := _c.mutation.UpdatedAt(); ok {
-		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
-		_node.UpdatedAt = value
-	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(task.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
@@ -246,6 +238,14 @@ func (_c *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Body(); ok {
 		_spec.SetField(task.FieldBody, field.TypeJSON, value)
 		_node.Body = value
+	}
+	if value, ok := _c.mutation.CreatedAt(); ok {
+		_spec.SetField(task.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := _c.mutation.UpdatedAt(); ok {
+		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
 	}
 	if nodes := _c.mutation.TagsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -286,7 +286,7 @@ func (_c *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 // of the `INSERT` statement. For example:
 //
 //	client.Task.Create().
-//		SetCreatedAt(v).
+//		SetStatus(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -295,7 +295,7 @@ func (_c *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.TaskUpsert) {
-//			SetCreatedAt(v+v).
+//			SetStatus(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *TaskCreate) OnConflict(opts ...sql.ConflictOption) *TaskUpsertOne {
@@ -331,18 +331,6 @@ type (
 	}
 )
 
-// SetUpdatedAt sets the "updated_at" field.
-func (u *TaskUpsert) SetUpdatedAt(v time.Time) *TaskUpsert {
-	u.Set(task.FieldUpdatedAt, v)
-	return u
-}
-
-// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
-func (u *TaskUpsert) UpdateUpdatedAt() *TaskUpsert {
-	u.SetExcluded(task.FieldUpdatedAt)
-	return u
-}
-
 // SetStatus sets the "status" field.
 func (u *TaskUpsert) SetStatus(v task.Status) *TaskUpsert {
 	u.Set(task.FieldStatus, v)
@@ -352,6 +340,18 @@ func (u *TaskUpsert) SetStatus(v task.Status) *TaskUpsert {
 // UpdateStatus sets the "status" field to the value that was provided on create.
 func (u *TaskUpsert) UpdateStatus() *TaskUpsert {
 	u.SetExcluded(task.FieldStatus)
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *TaskUpsert) SetUpdatedAt(v time.Time) *TaskUpsert {
+	u.Set(task.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateUpdatedAt() *TaskUpsert {
+	u.SetExcluded(task.FieldUpdatedAt)
 	return u
 }
 
@@ -372,11 +372,11 @@ func (u *TaskUpsertOne) UpdateNewValues() *TaskUpsertOne {
 		if _, exists := u.create.mutation.ID(); exists {
 			s.SetIgnore(task.FieldID)
 		}
-		if _, exists := u.create.mutation.CreatedAt(); exists {
-			s.SetIgnore(task.FieldCreatedAt)
-		}
 		if _, exists := u.create.mutation.Body(); exists {
 			s.SetIgnore(task.FieldBody)
+		}
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(task.FieldCreatedAt)
 		}
 	}))
 	return u
@@ -409,20 +409,6 @@ func (u *TaskUpsertOne) Update(set func(*TaskUpsert)) *TaskUpsertOne {
 	return u
 }
 
-// SetUpdatedAt sets the "updated_at" field.
-func (u *TaskUpsertOne) SetUpdatedAt(v time.Time) *TaskUpsertOne {
-	return u.Update(func(s *TaskUpsert) {
-		s.SetUpdatedAt(v)
-	})
-}
-
-// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
-func (u *TaskUpsertOne) UpdateUpdatedAt() *TaskUpsertOne {
-	return u.Update(func(s *TaskUpsert) {
-		s.UpdateUpdatedAt()
-	})
-}
-
 // SetStatus sets the "status" field.
 func (u *TaskUpsertOne) SetStatus(v task.Status) *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
@@ -434,6 +420,20 @@ func (u *TaskUpsertOne) SetStatus(v task.Status) *TaskUpsertOne {
 func (u *TaskUpsertOne) UpdateStatus() *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *TaskUpsertOne) SetUpdatedAt(v time.Time) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateUpdatedAt() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateUpdatedAt()
 	})
 }
 
@@ -573,7 +573,7 @@ func (_c *TaskCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.TaskUpsert) {
-//			SetCreatedAt(v+v).
+//			SetStatus(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *TaskCreateBulk) OnConflict(opts ...sql.ConflictOption) *TaskUpsertBulk {
@@ -620,11 +620,11 @@ func (u *TaskUpsertBulk) UpdateNewValues() *TaskUpsertBulk {
 			if _, exists := b.mutation.ID(); exists {
 				s.SetIgnore(task.FieldID)
 			}
-			if _, exists := b.mutation.CreatedAt(); exists {
-				s.SetIgnore(task.FieldCreatedAt)
-			}
 			if _, exists := b.mutation.Body(); exists {
 				s.SetIgnore(task.FieldBody)
+			}
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(task.FieldCreatedAt)
 			}
 		}
 	}))
@@ -658,20 +658,6 @@ func (u *TaskUpsertBulk) Update(set func(*TaskUpsert)) *TaskUpsertBulk {
 	return u
 }
 
-// SetUpdatedAt sets the "updated_at" field.
-func (u *TaskUpsertBulk) SetUpdatedAt(v time.Time) *TaskUpsertBulk {
-	return u.Update(func(s *TaskUpsert) {
-		s.SetUpdatedAt(v)
-	})
-}
-
-// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
-func (u *TaskUpsertBulk) UpdateUpdatedAt() *TaskUpsertBulk {
-	return u.Update(func(s *TaskUpsert) {
-		s.UpdateUpdatedAt()
-	})
-}
-
 // SetStatus sets the "status" field.
 func (u *TaskUpsertBulk) SetStatus(v task.Status) *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
@@ -683,6 +669,20 @@ func (u *TaskUpsertBulk) SetStatus(v task.Status) *TaskUpsertBulk {
 func (u *TaskUpsertBulk) UpdateStatus() *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *TaskUpsertBulk) SetUpdatedAt(v time.Time) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateUpdatedAt() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateUpdatedAt()
 	})
 }
 

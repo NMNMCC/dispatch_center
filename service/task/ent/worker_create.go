@@ -31,6 +31,20 @@ func (_c *WorkerCreate) SetEndOfLife(v time.Time) *WorkerCreate {
 	return _c
 }
 
+// SetRegisteredAt sets the "registered_at" field.
+func (_c *WorkerCreate) SetRegisteredAt(v time.Time) *WorkerCreate {
+	_c.mutation.SetRegisteredAt(v)
+	return _c
+}
+
+// SetNillableRegisteredAt sets the "registered_at" field if the given value is not nil.
+func (_c *WorkerCreate) SetNillableRegisteredAt(v *time.Time) *WorkerCreate {
+	if v != nil {
+		_c.SetRegisteredAt(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *WorkerCreate) SetID(v uuid.UUID) *WorkerCreate {
 	_c.mutation.SetID(v)
@@ -99,6 +113,10 @@ func (_c *WorkerCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *WorkerCreate) defaults() {
+	if _, ok := _c.mutation.RegisteredAt(); !ok {
+		v := worker.DefaultRegisteredAt()
+		_c.mutation.SetRegisteredAt(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := worker.DefaultID()
 		_c.mutation.SetID(v)
@@ -109,6 +127,9 @@ func (_c *WorkerCreate) defaults() {
 func (_c *WorkerCreate) check() error {
 	if _, ok := _c.mutation.EndOfLife(); !ok {
 		return &ValidationError{Name: "end_of_life", err: errors.New(`ent: missing required field "Worker.end_of_life"`)}
+	}
+	if _, ok := _c.mutation.RegisteredAt(); !ok {
+		return &ValidationError{Name: "registered_at", err: errors.New(`ent: missing required field "Worker.registered_at"`)}
 	}
 	return nil
 }
@@ -149,6 +170,10 @@ func (_c *WorkerCreate) createSpec() (*Worker, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.EndOfLife(); ok {
 		_spec.SetField(worker.FieldEndOfLife, field.TypeTime, value)
 		_node.EndOfLife = value
+	}
+	if value, ok := _c.mutation.RegisteredAt(); ok {
+		_spec.SetField(worker.FieldRegisteredAt, field.TypeTime, value)
+		_node.RegisteredAt = value
 	}
 	if nodes := _c.mutation.TaskIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -247,6 +272,9 @@ func (u *WorkerUpsertOne) UpdateNewValues() *WorkerUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		if _, exists := u.create.mutation.ID(); exists {
 			s.SetIgnore(worker.FieldID)
+		}
+		if _, exists := u.create.mutation.RegisteredAt(); exists {
+			s.SetIgnore(worker.FieldRegisteredAt)
 		}
 	}))
 	return u
@@ -475,6 +503,9 @@ func (u *WorkerUpsertBulk) UpdateNewValues() *WorkerUpsertBulk {
 		for _, b := range u.create.builders {
 			if _, exists := b.mutation.ID(); exists {
 				s.SetIgnore(worker.FieldID)
+			}
+			if _, exists := b.mutation.RegisteredAt(); exists {
+				s.SetIgnore(worker.FieldRegisteredAt)
 			}
 		}
 	}))

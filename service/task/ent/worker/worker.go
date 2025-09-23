@@ -3,6 +3,8 @@
 package worker
 
 import (
+	"time"
+
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
@@ -15,6 +17,8 @@ const (
 	FieldID = "id"
 	// FieldEndOfLife holds the string denoting the end_of_life field in the database.
 	FieldEndOfLife = "end_of_life"
+	// FieldRegisteredAt holds the string denoting the registered_at field in the database.
+	FieldRegisteredAt = "registered_at"
 	// EdgeTask holds the string denoting the task edge name in mutations.
 	EdgeTask = "task"
 	// Table holds the table name of the worker in the database.
@@ -32,6 +36,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldEndOfLife,
+	FieldRegisteredAt,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "workers"
@@ -56,6 +61,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultRegisteredAt holds the default value on creation for the "registered_at" field.
+	DefaultRegisteredAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
@@ -71,6 +78,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByEndOfLife orders the results by the end_of_life field.
 func ByEndOfLife(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEndOfLife, opts...).ToFunc()
+}
+
+// ByRegisteredAt orders the results by the registered_at field.
+func ByRegisteredAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRegisteredAt, opts...).ToFunc()
 }
 
 // ByTaskField orders the results by task field.

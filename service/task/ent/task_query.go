@@ -336,12 +336,12 @@ func (_q *TaskQuery) WithWorker(opts ...func(*WorkerQuery)) *TaskQuery {
 // Example:
 //
 //	var v []struct {
-//		CreatedAt time.Time `json:"created_at,omitempty"`
+//		Status task.Status `json:"status,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Task.Query().
-//		GroupBy(task.FieldCreatedAt).
+//		GroupBy(task.FieldStatus).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *TaskQuery) GroupBy(field string, fields ...string) *TaskGroupBy {
@@ -359,11 +359,11 @@ func (_q *TaskQuery) GroupBy(field string, fields ...string) *TaskGroupBy {
 // Example:
 //
 //	var v []struct {
-//		CreatedAt time.Time `json:"created_at,omitempty"`
+//		Status task.Status `json:"status,omitempty"`
 //	}
 //
 //	client.Task.Query().
-//		Select(task.FieldCreatedAt).
+//		Select(task.FieldStatus).
 //		Scan(ctx, &v)
 func (_q *TaskQuery) Select(fields ...string) *TaskSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)

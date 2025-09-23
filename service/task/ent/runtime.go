@@ -29,11 +29,11 @@ func init() {
 	taskFields := schema.Task{}.Fields()
 	_ = taskFields
 	// taskDescCreatedAt is the schema descriptor for created_at field.
-	taskDescCreatedAt := taskFields[1].Descriptor()
+	taskDescCreatedAt := taskFields[3].Descriptor()
 	// task.DefaultCreatedAt holds the default value on creation for the created_at field.
 	task.DefaultCreatedAt = taskDescCreatedAt.Default.(func() time.Time)
 	// taskDescUpdatedAt is the schema descriptor for updated_at field.
-	taskDescUpdatedAt := taskFields[2].Descriptor()
+	taskDescUpdatedAt := taskFields[4].Descriptor()
 	// task.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	task.DefaultUpdatedAt = taskDescUpdatedAt.Default.(func() time.Time)
 	// task.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -44,6 +44,10 @@ func init() {
 	task.DefaultID = taskDescID.Default.(func() uuid.UUID)
 	workerFields := schema.Worker{}.Fields()
 	_ = workerFields
+	// workerDescRegisteredAt is the schema descriptor for registered_at field.
+	workerDescRegisteredAt := workerFields[2].Descriptor()
+	// worker.DefaultRegisteredAt holds the default value on creation for the registered_at field.
+	worker.DefaultRegisteredAt = workerDescRegisteredAt.Default.(func() time.Time)
 	// workerDescID is the schema descriptor for id field.
 	workerDescID := workerFields[0].Descriptor()
 	// worker.DefaultID holds the default value on creation for the id field.

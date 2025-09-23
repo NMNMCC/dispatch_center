@@ -61,6 +61,11 @@ func EndOfLife(v time.Time) predicate.Worker {
 	return predicate.Worker(sql.FieldEQ(FieldEndOfLife, v))
 }
 
+// RegisteredAt applies equality check predicate on the "registered_at" field. It's identical to RegisteredAtEQ.
+func RegisteredAt(v time.Time) predicate.Worker {
+	return predicate.Worker(sql.FieldEQ(FieldRegisteredAt, v))
+}
+
 // EndOfLifeEQ applies the EQ predicate on the "end_of_life" field.
 func EndOfLifeEQ(v time.Time) predicate.Worker {
 	return predicate.Worker(sql.FieldEQ(FieldEndOfLife, v))
@@ -99,6 +104,46 @@ func EndOfLifeLT(v time.Time) predicate.Worker {
 // EndOfLifeLTE applies the LTE predicate on the "end_of_life" field.
 func EndOfLifeLTE(v time.Time) predicate.Worker {
 	return predicate.Worker(sql.FieldLTE(FieldEndOfLife, v))
+}
+
+// RegisteredAtEQ applies the EQ predicate on the "registered_at" field.
+func RegisteredAtEQ(v time.Time) predicate.Worker {
+	return predicate.Worker(sql.FieldEQ(FieldRegisteredAt, v))
+}
+
+// RegisteredAtNEQ applies the NEQ predicate on the "registered_at" field.
+func RegisteredAtNEQ(v time.Time) predicate.Worker {
+	return predicate.Worker(sql.FieldNEQ(FieldRegisteredAt, v))
+}
+
+// RegisteredAtIn applies the In predicate on the "registered_at" field.
+func RegisteredAtIn(vs ...time.Time) predicate.Worker {
+	return predicate.Worker(sql.FieldIn(FieldRegisteredAt, vs...))
+}
+
+// RegisteredAtNotIn applies the NotIn predicate on the "registered_at" field.
+func RegisteredAtNotIn(vs ...time.Time) predicate.Worker {
+	return predicate.Worker(sql.FieldNotIn(FieldRegisteredAt, vs...))
+}
+
+// RegisteredAtGT applies the GT predicate on the "registered_at" field.
+func RegisteredAtGT(v time.Time) predicate.Worker {
+	return predicate.Worker(sql.FieldGT(FieldRegisteredAt, v))
+}
+
+// RegisteredAtGTE applies the GTE predicate on the "registered_at" field.
+func RegisteredAtGTE(v time.Time) predicate.Worker {
+	return predicate.Worker(sql.FieldGTE(FieldRegisteredAt, v))
+}
+
+// RegisteredAtLT applies the LT predicate on the "registered_at" field.
+func RegisteredAtLT(v time.Time) predicate.Worker {
+	return predicate.Worker(sql.FieldLT(FieldRegisteredAt, v))
+}
+
+// RegisteredAtLTE applies the LTE predicate on the "registered_at" field.
+func RegisteredAtLTE(v time.Time) predicate.Worker {
+	return predicate.Worker(sql.FieldLTE(FieldRegisteredAt, v))
 }
 
 // HasTask applies the HasEdge predicate on the "task" edge.

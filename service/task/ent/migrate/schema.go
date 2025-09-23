@@ -22,10 +22,10 @@ var (
 	// TasksColumns holds the columns for the "tasks" table.
 	TasksColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "running", "completed", "failed"}, Default: "pending"},
 		{Name: "body", Type: field.TypeJSON},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 	}
 	// TasksTable holds the schema information for the "tasks" table.
 	TasksTable = &schema.Table{
@@ -37,6 +37,7 @@ var (
 	WorkersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "end_of_life", Type: field.TypeTime},
+		{Name: "registered_at", Type: field.TypeTime},
 		{Name: "task_worker", Type: field.TypeUUID, Unique: true, Nullable: true},
 	}
 	// WorkersTable holds the schema information for the "workers" table.
@@ -47,7 +48,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "workers_tasks_worker",
-				Columns:    []*schema.Column{WorkersColumns[2]},
+				Columns:    []*schema.Column{WorkersColumns[3]},
 				RefColumns: []*schema.Column{TasksColumns[0]},
 				OnDelete:   schema.SetNull,
 			},

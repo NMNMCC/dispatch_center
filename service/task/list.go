@@ -33,9 +33,11 @@ func (s *Service) List(ctx context.Context, req *ListReq) (*ListRes, error) {
 
 	out := lo.Map(ts, func(t *ent.Task, _ int) TaskRes {
 		return TaskRes{
-			ID:   t.ID.String(),
-			Tags: lo.Map(t.Edges.Tags, func(t *ent.Tag, _ int) string { return t.Name }),
-			Body: t.Body,
+			ID:        t.ID.String(),
+			Tags:      lo.Map(t.Edges.Tags, func(t *ent.Tag, _ int) string { return t.Name }),
+			Body:      t.Body,
+			CreatedAt: t.CreatedAt,
+			UpdatedAt: t.UpdatedAt,
 		}
 	})
 
@@ -90,4 +92,51 @@ func (q *ListReq) Validate() error {
 
 type ListRes struct {
 	Tasks []TaskRes `json:"tasks"`
+}
+
+//encore:api auth method=POST path=/task/list/worker
+func (s *Service) ListWorker(ctx context.Context, req *ListWorkerReq) (*ListWorkerRes, error) {
+	raw_workers, err := s.Database.Worker.Query().WithTask().Offset(req.Offset).Limit(req.Length).All(ctx)
+	if err != nil {
+		return nil, ErrUnknown
+	}
+
+	workers := make([]WorkerRes, 0, len(raw_workers))
+	for _, w := range raw_workers {
+		tags, err := w.Edges.Task.QueryTags().Select(tag.FieldName).All(ctx)
+		if err != nil {
+			return nil, ErrUnknown
+		}
+
+		workers = append(workers, WorkerRes{
+			ID:           w.ID.String(),
+			RegisteredAt: w.RegisteredAt,
+			Task: TaskRes{
+				ID:        w.Edges.Task.ID.String(),
+				Tags:      lo.Map(tags, func(t *ent.Tag, _ int) string { return t.Name }),
+				Body:      w.Edges.Task.Body,
+				CreatedAt: w.Edges.Task.CreatedAt,
+				UpdatedAt: w.Edges.Task.UpdatedAt,
+			},
+		})
+	}
+
+	return &ListWorkerRes{Workers: workers}, nil
+}
+
+type ListWorkerReq struct {
+	Working bool `json:"working"`
+
+	Offset int `json:"offset"`
+	Length int `json:"length"`
+}
+
+type ListWorkerRes struct {
+	Workers []WorkerRes `json:"workers"`
+}
+
+type WorkerRes struct {
+	ID           string    `json:"id"`
+	RegisteredAt time.Time `json:"registered_at"`
+	Task         TaskRes   `json:"task,omitzero"`
 }

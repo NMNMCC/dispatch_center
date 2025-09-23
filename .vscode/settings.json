@@ -1,4 +1,4 @@
 {
-  "cSpell.words": ["authhandler", "datasource", "gocron", "oerr", "postgresql", "rlog", "sqldb", "sqljson", "sslmode", "Stdlib", "uuid"],
+  "cSpell.words": ["authhandler", "datasource", "gocron", "oerr", "omitzero", "postgresql", "rlog", "sqldb", "sqljson", "sslmode", "Stdlib", "uuid"],
   "deno.enable": true
 }

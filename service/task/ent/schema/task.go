@@ -19,8 +19,6 @@ type Task struct {
 func (Task) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", util.NewUUIDv7()).Default(util.NewUUIDv7).Immutable(),
-		field.Time("created_at").Default(time.Now).Immutable(),
-		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 		field.Enum("status").
 			Values(
 				string(QueueStatusPending),
@@ -29,6 +27,9 @@ func (Task) Fields() []ent.Field {
 				string(QueueStatusFailed)).
 			Default(string(QueueStatusPending)),
 		field.JSON("body", json.RawMessage{}).Immutable(),
+
+		field.Time("created_at").Default(time.Now).Immutable(),
+		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}
 }
 

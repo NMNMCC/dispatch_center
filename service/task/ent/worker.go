@@ -21,6 +21,8 @@ type Worker struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// EndOfLife holds the value of the "end_of_life" field.
 	EndOfLife time.Time `json:"end_of_life,omitempty"`
+	// RegisteredAt holds the value of the "registered_at" field.
+	RegisteredAt time.Time `json:"registered_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the WorkerQuery when eager-loading is set.
 	Edges        WorkerEdges `json:"edges"`
@@ -53,7 +55,7 @@ func (*Worker) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case worker.FieldEndOfLife:
+		case worker.FieldEndOfLife, worker.FieldRegisteredAt:
 			values[i] = new(sql.NullTime)
 		case worker.FieldID:
 			values[i] = new(uuid.UUID)
@@ -85,6 +87,12 @@ func (_m *Worker) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field end_of_life", values[i])
 			} else if value.Valid {
 				_m.EndOfLife = value.Time
+			}
+		case worker.FieldRegisteredAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field registered_at", values[i])
+			} else if value.Valid {
+				_m.RegisteredAt = value.Time
 			}
 		case worker.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullScanner); !ok {
@@ -136,6 +144,9 @@ func (_m *Worker) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("end_of_life=")
 	builder.WriteString(_m.EndOfLife.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("registered_at=")
+	builder.WriteString(_m.RegisteredAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

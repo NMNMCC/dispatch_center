@@ -31,12 +31,6 @@ func (_u *TaskUpdate) Where(ps ...predicate.Task) *TaskUpdate {
 	return _u
 }
 
-// SetUpdatedAt sets the "updated_at" field.
-func (_u *TaskUpdate) SetUpdatedAt(v time.Time) *TaskUpdate {
-	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
 // SetStatus sets the "status" field.
 func (_u *TaskUpdate) SetStatus(v task.Status) *TaskUpdate {
 	_u.mutation.SetStatus(v)
@@ -48,6 +42,12 @@ func (_u *TaskUpdate) SetNillableStatus(v *task.Status) *TaskUpdate {
 	if v != nil {
 		_u.SetStatus(*v)
 	}
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *TaskUpdate) SetUpdatedAt(v time.Time) *TaskUpdate {
+	_u.mutation.SetUpdatedAt(v)
 	return _u
 }
 
@@ -175,11 +175,11 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
-	if value, ok := _u.mutation.UpdatedAt(); ok {
-		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
-	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(task.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if _u.mutation.TagsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -275,12 +275,6 @@ type TaskUpdateOne struct {
 	mutation *TaskMutation
 }
 
-// SetUpdatedAt sets the "updated_at" field.
-func (_u *TaskUpdateOne) SetUpdatedAt(v time.Time) *TaskUpdateOne {
-	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
 // SetStatus sets the "status" field.
 func (_u *TaskUpdateOne) SetStatus(v task.Status) *TaskUpdateOne {
 	_u.mutation.SetStatus(v)
@@ -292,6 +286,12 @@ func (_u *TaskUpdateOne) SetNillableStatus(v *task.Status) *TaskUpdateOne {
 	if v != nil {
 		_u.SetStatus(*v)
 	}
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *TaskUpdateOne) SetUpdatedAt(v time.Time) *TaskUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
 	return _u
 }
 
@@ -449,11 +449,11 @@ func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 			}
 		}
 	}
-	if value, ok := _u.mutation.UpdatedAt(); ok {
-		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
-	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(task.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if _u.mutation.TagsCleared() {
 		edge := &sqlgraph.EdgeSpec{

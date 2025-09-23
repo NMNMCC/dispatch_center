@@ -8,10 +8,10 @@ import (
 	"rezics.com/task-queue/service/task/ent/tag"
 )
 
-//encore:api auth method=POST path=/task/new
-func (s *Service) New(
+//encore:api auth method=POST path=/task/create
+func (s *Service) Create(
 	ctx context.Context,
-	req *NewReq) error {
+	req *CreateReq) error {
 	tx, err := s.Database.Tx(ctx)
 	if err != nil {
 		rlog.Error("failed to start transaction", "error", err)
@@ -58,7 +58,7 @@ func (s *Service) New(
 	return nil
 }
 
-type NewReq struct {
+type CreateReq struct {
 	Tags []string        `json:"tags"`
 	Body json.RawMessage `json:"body"`
 }
