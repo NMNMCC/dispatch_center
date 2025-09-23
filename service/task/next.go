@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"rezics.com/task-queue/service/task/ent"
-	"rezics.com/task-queue/service/task/ent/predicate"
 	"rezics.com/task-queue/service/task/ent/tag"
 	"rezics.com/task-queue/service/task/ent/task"
 )
@@ -32,10 +31,8 @@ func (s *Service) Next(
 		return nil, &errs.Error{Code: errs.FailedPrecondition, Message: "worker is already processing a task: " + tid.String()}
 	}
 
-	where := []predicate.Task{task.HasTagsWith(tag.NameIn(req.Tags...))}
-
 	t, err := s.Database.Task.Query().
-		Where(where...).
+		Where(task.HasTagsWith(tag.NameIn(req.Tags...)), task.Not(task.HasWorker())).
 		WithTags().
 		Order(task.ByCreatedAt(sql.OrderAsc())).
 		First(ctx)
