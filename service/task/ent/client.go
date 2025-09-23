@@ -18,6 +18,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"rezics.com/task-queue/service/task/ent/tag"
 	"rezics.com/task-queue/service/task/ent/task"
+	"rezics.com/task-queue/service/task/ent/worker"
 )
 
 // Client is the client that holds all ent builders.
@@ -29,6 +30,8 @@ type Client struct {
 	Tag *TagClient
 	// Task is the client for interacting with the Task builders.
 	Task *TaskClient
+	// Worker is the client for interacting with the Worker builders.
+	Worker *WorkerClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -42,6 +45,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Tag = NewTagClient(c.config)
 	c.Task = NewTaskClient(c.config)
+	c.Worker = NewWorkerClient(c.config)
 }
 
 type (
@@ -136,6 +140,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config: cfg,
 		Tag:    NewTagClient(cfg),
 		Task:   NewTaskClient(cfg),
+		Worker: NewWorkerClient(cfg),
 	}, nil
 }
 
@@ -157,6 +162,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config: cfg,
 		Tag:    NewTagClient(cfg),
 		Task:   NewTaskClient(cfg),
+		Worker: NewWorkerClient(cfg),
 	}, nil
 }
 
@@ -187,6 +193,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	c.Tag.Use(hooks...)
 	c.Task.Use(hooks...)
+	c.Worker.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
@@ -194,6 +201,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Tag.Intercept(interceptors...)
 	c.Task.Intercept(interceptors...)
+	c.Worker.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -203,6 +211,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Tag.mutate(ctx, m)
 	case *TaskMutation:
 		return c.Task.mutate(ctx, m)
+	case *WorkerMutation:
+		return c.Worker.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -481,6 +491,22 @@ func (c *TaskClient) QueryTags(_m *Task) *TagQuery {
 	return query
 }
 
+// QueryWorker queries the worker edge of a Task.
+func (c *TaskClient) QueryWorker(_m *Task) *WorkerQuery {
+	query := (&WorkerClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(task.Table, task.FieldID, id),
+			sqlgraph.To(worker.Table, worker.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, task.WorkerTable, task.WorkerColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *TaskClient) Hooks() []Hook {
 	return c.hooks.Task
@@ -506,12 +532,161 @@ func (c *TaskClient) mutate(ctx context.Context, m *TaskMutation) (Value, error)
 	}
 }
 
+// WorkerClient is a client for the Worker schema.
+type WorkerClient struct {
+	config
+}
+
+// NewWorkerClient returns a client for the Worker from the given config.
+func NewWorkerClient(c config) *WorkerClient {
+	return &WorkerClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `worker.Hooks(f(g(h())))`.
+func (c *WorkerClient) Use(hooks ...Hook) {
+	c.hooks.Worker = append(c.hooks.Worker, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `worker.Intercept(f(g(h())))`.
+func (c *WorkerClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Worker = append(c.inters.Worker, interceptors...)
+}
+
+// Create returns a builder for creating a Worker entity.
+func (c *WorkerClient) Create() *WorkerCreate {
+	mutation := newWorkerMutation(c.config, OpCreate)
+	return &WorkerCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Worker entities.
+func (c *WorkerClient) CreateBulk(builders ...*WorkerCreate) *WorkerCreateBulk {
+	return &WorkerCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WorkerClient) MapCreateBulk(slice any, setFunc func(*WorkerCreate, int)) *WorkerCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WorkerCreateBulk{err: fmt.Errorf("calling to WorkerClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WorkerCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WorkerCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Worker.
+func (c *WorkerClient) Update() *WorkerUpdate {
+	mutation := newWorkerMutation(c.config, OpUpdate)
+	return &WorkerUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WorkerClient) UpdateOne(_m *Worker) *WorkerUpdateOne {
+	mutation := newWorkerMutation(c.config, OpUpdateOne, withWorker(_m))
+	return &WorkerUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WorkerClient) UpdateOneID(id uuid.UUID) *WorkerUpdateOne {
+	mutation := newWorkerMutation(c.config, OpUpdateOne, withWorkerID(id))
+	return &WorkerUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Worker.
+func (c *WorkerClient) Delete() *WorkerDelete {
+	mutation := newWorkerMutation(c.config, OpDelete)
+	return &WorkerDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WorkerClient) DeleteOne(_m *Worker) *WorkerDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WorkerClient) DeleteOneID(id uuid.UUID) *WorkerDeleteOne {
+	builder := c.Delete().Where(worker.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WorkerDeleteOne{builder}
+}
+
+// Query returns a query builder for Worker.
+func (c *WorkerClient) Query() *WorkerQuery {
+	return &WorkerQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWorker},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Worker entity by its id.
+func (c *WorkerClient) Get(ctx context.Context, id uuid.UUID) (*Worker, error) {
+	return c.Query().Where(worker.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WorkerClient) GetX(ctx context.Context, id uuid.UUID) *Worker {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryTask queries the task edge of a Worker.
+func (c *WorkerClient) QueryTask(_m *Worker) *TaskQuery {
+	query := (&TaskClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(worker.Table, worker.FieldID, id),
+			sqlgraph.To(task.Table, task.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, worker.TaskTable, worker.TaskColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *WorkerClient) Hooks() []Hook {
+	return c.hooks.Worker
+}
+
+// Interceptors returns the client interceptors.
+func (c *WorkerClient) Interceptors() []Interceptor {
+	return c.inters.Worker
+}
+
+func (c *WorkerClient) mutate(ctx context.Context, m *WorkerMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WorkerCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WorkerUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WorkerUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WorkerDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Worker mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Tag, Task []ent.Hook
+		Tag, Task, Worker []ent.Hook
 	}
 	inters struct {
-		Tag, Task []ent.Interceptor
+		Tag, Task, Worker []ent.Interceptor
 	}
 )

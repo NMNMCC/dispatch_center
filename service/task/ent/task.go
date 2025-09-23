@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"rezics.com/task-queue/service/task/ent/task"
+	"rezics.com/task-queue/service/task/ent/worker"
 )
 
 // Task is the model entity for the Task schema.
@@ -18,6 +20,10 @@ type Task struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Status holds the value of the "status" field.
 	Status task.Status `json:"status,omitempty"`
 	// Body holds the value of the "body" field.
@@ -32,9 +38,11 @@ type Task struct {
 type TaskEdges struct {
 	// Tags holds the value of the tags edge.
 	Tags []*Tag `json:"tags,omitempty"`
+	// Worker holds the value of the worker edge.
+	Worker *Worker `json:"worker,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // TagsOrErr returns the Tags value or an error if the edge
@@ -46,6 +54,17 @@ func (e TaskEdges) TagsOrErr() ([]*Tag, error) {
 	return nil, &NotLoadedError{edge: "tags"}
 }
 
+// WorkerOrErr returns the Worker value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e TaskEdges) WorkerOrErr() (*Worker, error) {
+	if e.Worker != nil {
+		return e.Worker, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: worker.Label}
+	}
+	return nil, &NotLoadedError{edge: "worker"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Task) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -55,6 +74,8 @@ func (*Task) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case task.FieldStatus:
 			values[i] = new(sql.NullString)
+		case task.FieldCreatedAt, task.FieldUpdatedAt:
+			values[i] = new(sql.NullTime)
 		case task.FieldID:
 			values[i] = new(uuid.UUID)
 		default:
@@ -77,6 +98,18 @@ func (_m *Task) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
 				_m.ID = *value
+			}
+		case task.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				_m.CreatedAt = value.Time
+			}
+		case task.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				_m.UpdatedAt = value.Time
 			}
 		case task.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -110,6 +143,11 @@ func (_m *Task) QueryTags() *TagQuery {
 	return NewTaskClient(_m.config).QueryTags(_m)
 }
 
+// QueryWorker queries the "worker" edge of the Task entity.
+func (_m *Task) QueryWorker() *WorkerQuery {
+	return NewTaskClient(_m.config).QueryWorker(_m)
+}
+
 // Update returns a builder for updating this Task.
 // Note that you need to call Task.Unwrap() before calling this method if this Task
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -133,6 +171,12 @@ func (_m *Task) String() string {
 	var builder strings.Builder
 	builder.WriteString("Task(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString("created_at=")
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")

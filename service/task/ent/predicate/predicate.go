@@ -11,3 +11,6 @@ type Tag func(*sql.Selector)
 
 // Task is the predicate function for task builders.
 type Task func(*sql.Selector)
+
+// Worker is the predicate function for worker builders.
+type Worker func(*sql.Selector)

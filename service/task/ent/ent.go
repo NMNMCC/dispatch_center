@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"rezics.com/task-queue/service/task/ent/tag"
 	"rezics.com/task-queue/service/task/ent/task"
+	"rezics.com/task-queue/service/task/ent/worker"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -74,8 +75,9 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			tag.Table:  tag.ValidColumn,
-			task.Table: task.ValidColumn,
+			tag.Table:    tag.ValidColumn,
+			task.Table:   task.ValidColumn,
+			worker.Table: worker.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

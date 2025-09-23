@@ -22,6 +22,8 @@ var (
 	// TasksColumns holds the columns for the "tasks" table.
 	TasksColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "running", "completed", "failed"}, Default: "pending"},
 		{Name: "body", Type: field.TypeJSON},
 	}
@@ -30,6 +32,26 @@ var (
 		Name:       "tasks",
 		Columns:    TasksColumns,
 		PrimaryKey: []*schema.Column{TasksColumns[0]},
+	}
+	// WorkersColumns holds the columns for the "workers" table.
+	WorkersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "end_of_life", Type: field.TypeTime},
+		{Name: "task_worker", Type: field.TypeUUID, Unique: true, Nullable: true},
+	}
+	// WorkersTable holds the schema information for the "workers" table.
+	WorkersTable = &schema.Table{
+		Name:       "workers",
+		Columns:    WorkersColumns,
+		PrimaryKey: []*schema.Column{WorkersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "workers_tasks_worker",
+				Columns:    []*schema.Column{WorkersColumns[2]},
+				RefColumns: []*schema.Column{TasksColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 	}
 	// TagTasksColumns holds the columns for the "tag_tasks" table.
 	TagTasksColumns = []*schema.Column{
@@ -60,11 +82,13 @@ var (
 	Tables = []*schema.Table{
 		TagsTable,
 		TasksTable,
+		WorkersTable,
 		TagTasksTable,
 	}
 )
 
 func init() {
+	WorkersTable.ForeignKeys[0].RefTable = TasksTable
 	TagTasksTable.ForeignKeys[0].RefTable = TagsTable
 	TagTasksTable.ForeignKeys[1].RefTable = TasksTable
 }

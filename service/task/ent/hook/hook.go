@@ -33,6 +33,18 @@ func (f TaskFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TaskMutation", m)
 }
 
+// The WorkerFunc type is an adapter to allow the use of ordinary
+// function as Worker mutator.
+type WorkerFunc func(context.Context, *ent.WorkerMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f WorkerFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.WorkerMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WorkerMutation", m)
+}
+
 // Condition is a hook condition function.
 type Condition func(context.Context, ent.Mutation) bool
 

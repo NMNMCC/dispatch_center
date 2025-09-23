@@ -4,17 +4,30 @@ import (
 	"context"
 
 	"encore.dev/beta/auth"
+	"encore.dev/beta/errs"
+	"encore.dev/rlog"
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqljson"
+	"rezics.com/task-queue/service/auth/ent/user"
 )
 
-// Data can be named whatever you prefer (but must be exported).
-type Data struct {
-	Username string
-	// ...
+type AuthData struct {
+	Email string
 }
 
-// AuthHandler can be named whatever you prefer (but must be exported).
-//
 //encore:authhandler
-func AuthHandler(ctx context.Context, token string) (auth.UID, *Data, error) {
-	return auth.UID("test-id"), &Data{Username: "test"}, nil
+func (s *Service) AuthHandler(ctx context.Context, token string) (auth.UID, *AuthData, error) {
+	u, err := s.Database.
+		User.
+		Query().
+		Where(func(s *sql.Selector) { s.Where(sqljson.ValueContains(user.FieldTokens, token)) }).
+		First(ctx)
+	if err != nil {
+		rlog.Error("failed to find user by token", "error", err)
+		return "", nil, &errs.Error{
+			Code: errs.Unauthenticated,
+		}
+	}
+
+	return auth.UID(u.ID.String()), &AuthData{Email: u.Email}, nil
 }

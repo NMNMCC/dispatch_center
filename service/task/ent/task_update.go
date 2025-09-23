@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -14,6 +15,7 @@ import (
 	"rezics.com/task-queue/service/task/ent/predicate"
 	"rezics.com/task-queue/service/task/ent/tag"
 	"rezics.com/task-queue/service/task/ent/task"
+	"rezics.com/task-queue/service/task/ent/worker"
 )
 
 // TaskUpdate is the builder for updating Task entities.
@@ -26,6 +28,12 @@ type TaskUpdate struct {
 // Where appends a list predicates to the TaskUpdate builder.
 func (_u *TaskUpdate) Where(ps ...predicate.Task) *TaskUpdate {
 	_u.mutation.Where(ps...)
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *TaskUpdate) SetUpdatedAt(v time.Time) *TaskUpdate {
+	_u.mutation.SetUpdatedAt(v)
 	return _u
 }
 
@@ -58,6 +66,25 @@ func (_u *TaskUpdate) AddTags(v ...*Tag) *TaskUpdate {
 	return _u.AddTagIDs(ids...)
 }
 
+// SetWorkerID sets the "worker" edge to the Worker entity by ID.
+func (_u *TaskUpdate) SetWorkerID(id uuid.UUID) *TaskUpdate {
+	_u.mutation.SetWorkerID(id)
+	return _u
+}
+
+// SetNillableWorkerID sets the "worker" edge to the Worker entity by ID if the given value is not nil.
+func (_u *TaskUpdate) SetNillableWorkerID(id *uuid.UUID) *TaskUpdate {
+	if id != nil {
+		_u = _u.SetWorkerID(*id)
+	}
+	return _u
+}
+
+// SetWorker sets the "worker" edge to the Worker entity.
+func (_u *TaskUpdate) SetWorker(v *Worker) *TaskUpdate {
+	return _u.SetWorkerID(v.ID)
+}
+
 // Mutation returns the TaskMutation object of the builder.
 func (_u *TaskUpdate) Mutation() *TaskMutation {
 	return _u.mutation
@@ -84,8 +111,15 @@ func (_u *TaskUpdate) RemoveTags(v ...*Tag) *TaskUpdate {
 	return _u.RemoveTagIDs(ids...)
 }
 
+// ClearWorker clears the "worker" edge to the Worker entity.
+func (_u *TaskUpdate) ClearWorker() *TaskUpdate {
+	_u.mutation.ClearWorker()
+	return _u
+}
+
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *TaskUpdate) Save(ctx context.Context) (int, error) {
+	_u.defaults()
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -111,6 +145,14 @@ func (_u *TaskUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (_u *TaskUpdate) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
+		v := task.UpdateDefaultUpdatedAt()
+		_u.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (_u *TaskUpdate) check() error {
 	if v, ok := _u.mutation.Status(); ok {
@@ -132,6 +174,9 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(task.FieldStatus, field.TypeEnum, value)
@@ -181,6 +226,35 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.WorkerCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   task.WorkerTable,
+			Columns: []string{task.WorkerColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(worker.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WorkerIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   task.WorkerTable,
+			Columns: []string{task.WorkerColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(worker.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{task.Label}
@@ -199,6 +273,12 @@ type TaskUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *TaskMutation
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *TaskUpdateOne) SetUpdatedAt(v time.Time) *TaskUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetStatus sets the "status" field.
@@ -230,6 +310,25 @@ func (_u *TaskUpdateOne) AddTags(v ...*Tag) *TaskUpdateOne {
 	return _u.AddTagIDs(ids...)
 }
 
+// SetWorkerID sets the "worker" edge to the Worker entity by ID.
+func (_u *TaskUpdateOne) SetWorkerID(id uuid.UUID) *TaskUpdateOne {
+	_u.mutation.SetWorkerID(id)
+	return _u
+}
+
+// SetNillableWorkerID sets the "worker" edge to the Worker entity by ID if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillableWorkerID(id *uuid.UUID) *TaskUpdateOne {
+	if id != nil {
+		_u = _u.SetWorkerID(*id)
+	}
+	return _u
+}
+
+// SetWorker sets the "worker" edge to the Worker entity.
+func (_u *TaskUpdateOne) SetWorker(v *Worker) *TaskUpdateOne {
+	return _u.SetWorkerID(v.ID)
+}
+
 // Mutation returns the TaskMutation object of the builder.
 func (_u *TaskUpdateOne) Mutation() *TaskMutation {
 	return _u.mutation
@@ -256,6 +355,12 @@ func (_u *TaskUpdateOne) RemoveTags(v ...*Tag) *TaskUpdateOne {
 	return _u.RemoveTagIDs(ids...)
 }
 
+// ClearWorker clears the "worker" edge to the Worker entity.
+func (_u *TaskUpdateOne) ClearWorker() *TaskUpdateOne {
+	_u.mutation.ClearWorker()
+	return _u
+}
+
 // Where appends a list predicates to the TaskUpdate builder.
 func (_u *TaskUpdateOne) Where(ps ...predicate.Task) *TaskUpdateOne {
 	_u.mutation.Where(ps...)
@@ -271,6 +376,7 @@ func (_u *TaskUpdateOne) Select(field string, fields ...string) *TaskUpdateOne {
 
 // Save executes the query and returns the updated Task entity.
 func (_u *TaskUpdateOne) Save(ctx context.Context) (*Task, error) {
+	_u.defaults()
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -293,6 +399,14 @@ func (_u *TaskUpdateOne) Exec(ctx context.Context) error {
 func (_u *TaskUpdateOne) ExecX(ctx context.Context) {
 	if err := _u.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (_u *TaskUpdateOne) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
+		v := task.UpdateDefaultUpdatedAt()
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -335,6 +449,9 @@ func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 			}
 		}
 	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
+	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(task.FieldStatus, field.TypeEnum, value)
 	}
@@ -376,6 +493,35 @@ func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(tag.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.WorkerCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   task.WorkerTable,
+			Columns: []string{task.WorkerColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(worker.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WorkerIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   task.WorkerTable,
+			Columns: []string{task.WorkerColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(worker.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

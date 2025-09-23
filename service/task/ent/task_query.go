@@ -16,6 +16,7 @@ import (
 	"rezics.com/task-queue/service/task/ent/predicate"
 	"rezics.com/task-queue/service/task/ent/tag"
 	"rezics.com/task-queue/service/task/ent/task"
+	"rezics.com/task-queue/service/task/ent/worker"
 )
 
 // TaskQuery is the builder for querying Task entities.
@@ -26,6 +27,7 @@ type TaskQuery struct {
 	inters     []Interceptor
 	predicates []predicate.Task
 	withTags   *TagQuery
+	withWorker *WorkerQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -77,6 +79,28 @@ func (_q *TaskQuery) QueryTags() *TagQuery {
 			sqlgraph.From(task.Table, task.FieldID, selector),
 			sqlgraph.To(tag.Table, tag.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, true, task.TagsTable, task.TagsPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryWorker chains the current query on the "worker" edge.
+func (_q *TaskQuery) QueryWorker() *WorkerQuery {
+	query := (&WorkerClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(task.Table, task.FieldID, selector),
+			sqlgraph.To(worker.Table, worker.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, task.WorkerTable, task.WorkerColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -277,6 +301,7 @@ func (_q *TaskQuery) Clone() *TaskQuery {
 		inters:     append([]Interceptor{}, _q.inters...),
 		predicates: append([]predicate.Task{}, _q.predicates...),
 		withTags:   _q.withTags.Clone(),
+		withWorker: _q.withWorker.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -294,18 +319,29 @@ func (_q *TaskQuery) WithTags(opts ...func(*TagQuery)) *TaskQuery {
 	return _q
 }
 
+// WithWorker tells the query-builder to eager-load the nodes that are connected to
+// the "worker" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *TaskQuery) WithWorker(opts ...func(*WorkerQuery)) *TaskQuery {
+	query := (&WorkerClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withWorker = query
+	return _q
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
 // Example:
 //
 //	var v []struct {
-//		Status task.Status `json:"status,omitempty"`
+//		CreatedAt time.Time `json:"created_at,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Task.Query().
-//		GroupBy(task.FieldStatus).
+//		GroupBy(task.FieldCreatedAt).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *TaskQuery) GroupBy(field string, fields ...string) *TaskGroupBy {
@@ -323,11 +359,11 @@ func (_q *TaskQuery) GroupBy(field string, fields ...string) *TaskGroupBy {
 // Example:
 //
 //	var v []struct {
-//		Status task.Status `json:"status,omitempty"`
+//		CreatedAt time.Time `json:"created_at,omitempty"`
 //	}
 //
 //	client.Task.Query().
-//		Select(task.FieldStatus).
+//		Select(task.FieldCreatedAt).
 //		Scan(ctx, &v)
 func (_q *TaskQuery) Select(fields ...string) *TaskSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
@@ -372,8 +408,9 @@ func (_q *TaskQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Task, e
 	var (
 		nodes       = []*Task{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			_q.withTags != nil,
+			_q.withWorker != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -398,6 +435,12 @@ func (_q *TaskQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Task, e
 		if err := _q.loadTags(ctx, query, nodes,
 			func(n *Task) { n.Edges.Tags = []*Tag{} },
 			func(n *Task, e *Tag) { n.Edges.Tags = append(n.Edges.Tags, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withWorker; query != nil {
+		if err := _q.loadWorker(ctx, query, nodes, nil,
+			func(n *Task, e *Worker) { n.Edges.Worker = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -462,6 +505,34 @@ func (_q *TaskQuery) loadTags(ctx context.Context, query *TagQuery, nodes []*Tas
 		for kn := range nodes {
 			assign(kn, n)
 		}
+	}
+	return nil
+}
+func (_q *TaskQuery) loadWorker(ctx context.Context, query *WorkerQuery, nodes []*Task, init func(*Task), assign func(*Task, *Worker)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Task)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+	}
+	query.withFKs = true
+	query.Where(predicate.Worker(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(task.WorkerColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.task_worker
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "task_worker" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "task_worker" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }

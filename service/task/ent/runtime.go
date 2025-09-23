@@ -3,10 +3,13 @@
 package ent
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"rezics.com/task-queue/service/task/ent/schema"
 	"rezics.com/task-queue/service/task/ent/tag"
 	"rezics.com/task-queue/service/task/ent/task"
+	"rezics.com/task-queue/service/task/ent/worker"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -25,8 +28,24 @@ func init() {
 	tag.DefaultID = tagDescID.Default.(func() uuid.UUID)
 	taskFields := schema.Task{}.Fields()
 	_ = taskFields
+	// taskDescCreatedAt is the schema descriptor for created_at field.
+	taskDescCreatedAt := taskFields[1].Descriptor()
+	// task.DefaultCreatedAt holds the default value on creation for the created_at field.
+	task.DefaultCreatedAt = taskDescCreatedAt.Default.(func() time.Time)
+	// taskDescUpdatedAt is the schema descriptor for updated_at field.
+	taskDescUpdatedAt := taskFields[2].Descriptor()
+	// task.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	task.DefaultUpdatedAt = taskDescUpdatedAt.Default.(func() time.Time)
+	// task.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	task.UpdateDefaultUpdatedAt = taskDescUpdatedAt.UpdateDefault.(func() time.Time)
 	// taskDescID is the schema descriptor for id field.
 	taskDescID := taskFields[0].Descriptor()
 	// task.DefaultID holds the default value on creation for the id field.
 	task.DefaultID = taskDescID.Default.(func() uuid.UUID)
+	workerFields := schema.Worker{}.Fields()
+	_ = workerFields
+	// workerDescID is the schema descriptor for id field.
+	workerDescID := workerFields[0].Descriptor()
+	// worker.DefaultID holds the default value on creation for the id field.
+	worker.DefaultID = workerDescID.Default.(func() uuid.UUID)
 }

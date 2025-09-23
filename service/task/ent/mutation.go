@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -15,6 +16,7 @@ import (
 	"rezics.com/task-queue/service/task/ent/predicate"
 	"rezics.com/task-queue/service/task/ent/tag"
 	"rezics.com/task-queue/service/task/ent/task"
+	"rezics.com/task-queue/service/task/ent/worker"
 )
 
 const (
@@ -26,8 +28,9 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeTag  = "Tag"
-	TypeTask = "Task"
+	TypeTag    = "Tag"
+	TypeTask   = "Task"
+	TypeWorker = "Worker"
 )
 
 // TagMutation represents an operation that mutates the Tag nodes in the graph.
@@ -461,6 +464,8 @@ type TaskMutation struct {
 	op            Op
 	typ           string
 	id            *uuid.UUID
+	created_at    *time.Time
+	updated_at    *time.Time
 	status        *task.Status
 	body          *json.RawMessage
 	appendbody    json.RawMessage
@@ -468,6 +473,8 @@ type TaskMutation struct {
 	tags          map[uuid.UUID]struct{}
 	removedtags   map[uuid.UUID]struct{}
 	clearedtags   bool
+	worker        *uuid.UUID
+	clearedworker bool
 	done          bool
 	oldValue      func(context.Context) (*Task, error)
 	predicates    []predicate.Task
@@ -575,6 +582,78 @@ func (m *TaskMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *TaskMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *TaskMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Task entity.
+// If the Task object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TaskMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *TaskMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *TaskMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *TaskMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Task entity.
+// If the Task object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TaskMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *TaskMutation) ResetUpdatedAt() {
+	m.updated_at = nil
 }
 
 // SetStatus sets the "status" field.
@@ -718,6 +797,45 @@ func (m *TaskMutation) ResetTags() {
 	m.removedtags = nil
 }
 
+// SetWorkerID sets the "worker" edge to the Worker entity by id.
+func (m *TaskMutation) SetWorkerID(id uuid.UUID) {
+	m.worker = &id
+}
+
+// ClearWorker clears the "worker" edge to the Worker entity.
+func (m *TaskMutation) ClearWorker() {
+	m.clearedworker = true
+}
+
+// WorkerCleared reports if the "worker" edge to the Worker entity was cleared.
+func (m *TaskMutation) WorkerCleared() bool {
+	return m.clearedworker
+}
+
+// WorkerID returns the "worker" edge ID in the mutation.
+func (m *TaskMutation) WorkerID() (id uuid.UUID, exists bool) {
+	if m.worker != nil {
+		return *m.worker, true
+	}
+	return
+}
+
+// WorkerIDs returns the "worker" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// WorkerID instead. It exists only for internal usage by the builders.
+func (m *TaskMutation) WorkerIDs() (ids []uuid.UUID) {
+	if id := m.worker; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetWorker resets all changes to the "worker" edge.
+func (m *TaskMutation) ResetWorker() {
+	m.worker = nil
+	m.clearedworker = false
+}
+
 // Where appends a list predicates to the TaskMutation builder.
 func (m *TaskMutation) Where(ps ...predicate.Task) {
 	m.predicates = append(m.predicates, ps...)
@@ -752,7 +870,13 @@ func (m *TaskMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TaskMutation) Fields() []string {
-	fields := make([]string, 0, 2)
+	fields := make([]string, 0, 4)
+	if m.created_at != nil {
+		fields = append(fields, task.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, task.FieldUpdatedAt)
+	}
 	if m.status != nil {
 		fields = append(fields, task.FieldStatus)
 	}
@@ -767,6 +891,10 @@ func (m *TaskMutation) Fields() []string {
 // schema.
 func (m *TaskMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case task.FieldCreatedAt:
+		return m.CreatedAt()
+	case task.FieldUpdatedAt:
+		return m.UpdatedAt()
 	case task.FieldStatus:
 		return m.Status()
 	case task.FieldBody:
@@ -780,6 +908,10 @@ func (m *TaskMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *TaskMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case task.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case task.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
 	case task.FieldStatus:
 		return m.OldStatus(ctx)
 	case task.FieldBody:
@@ -793,6 +925,20 @@ func (m *TaskMutation) OldField(ctx context.Context, name string) (ent.Value, er
 // type.
 func (m *TaskMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case task.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case task.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
 	case task.FieldStatus:
 		v, ok := value.(task.Status)
 		if !ok {
@@ -856,6 +1002,12 @@ func (m *TaskMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *TaskMutation) ResetField(name string) error {
 	switch name {
+	case task.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case task.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
 	case task.FieldStatus:
 		m.ResetStatus()
 		return nil
@@ -868,9 +1020,12 @@ func (m *TaskMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *TaskMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.tags != nil {
 		edges = append(edges, task.EdgeTags)
+	}
+	if m.worker != nil {
+		edges = append(edges, task.EdgeWorker)
 	}
 	return edges
 }
@@ -885,13 +1040,17 @@ func (m *TaskMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case task.EdgeWorker:
+		if id := m.worker; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *TaskMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removedtags != nil {
 		edges = append(edges, task.EdgeTags)
 	}
@@ -914,9 +1073,12 @@ func (m *TaskMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *TaskMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedtags {
 		edges = append(edges, task.EdgeTags)
+	}
+	if m.clearedworker {
+		edges = append(edges, task.EdgeWorker)
 	}
 	return edges
 }
@@ -927,6 +1089,8 @@ func (m *TaskMutation) EdgeCleared(name string) bool {
 	switch name {
 	case task.EdgeTags:
 		return m.clearedtags
+	case task.EdgeWorker:
+		return m.clearedworker
 	}
 	return false
 }
@@ -935,6 +1099,9 @@ func (m *TaskMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *TaskMutation) ClearEdge(name string) error {
 	switch name {
+	case task.EdgeWorker:
+		m.ClearWorker()
+		return nil
 	}
 	return fmt.Errorf("unknown Task unique edge %s", name)
 }
@@ -946,6 +1113,408 @@ func (m *TaskMutation) ResetEdge(name string) error {
 	case task.EdgeTags:
 		m.ResetTags()
 		return nil
+	case task.EdgeWorker:
+		m.ResetWorker()
+		return nil
 	}
 	return fmt.Errorf("unknown Task edge %s", name)
+}
+
+// WorkerMutation represents an operation that mutates the Worker nodes in the graph.
+type WorkerMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	end_of_life   *time.Time
+	clearedFields map[string]struct{}
+	task          *uuid.UUID
+	clearedtask   bool
+	done          bool
+	oldValue      func(context.Context) (*Worker, error)
+	predicates    []predicate.Worker
+}
+
+var _ ent.Mutation = (*WorkerMutation)(nil)
+
+// workerOption allows management of the mutation configuration using functional options.
+type workerOption func(*WorkerMutation)
+
+// newWorkerMutation creates new mutation for the Worker entity.
+func newWorkerMutation(c config, op Op, opts ...workerOption) *WorkerMutation {
+	m := &WorkerMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWorker,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWorkerID sets the ID field of the mutation.
+func withWorkerID(id uuid.UUID) workerOption {
+	return func(m *WorkerMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Worker
+		)
+		m.oldValue = func(ctx context.Context) (*Worker, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Worker.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWorker sets the old Worker of the mutation.
+func withWorker(node *Worker) workerOption {
+	return func(m *WorkerMutation) {
+		m.oldValue = func(context.Context) (*Worker, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WorkerMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WorkerMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Worker entities.
+func (m *WorkerMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WorkerMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WorkerMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Worker.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetEndOfLife sets the "end_of_life" field.
+func (m *WorkerMutation) SetEndOfLife(t time.Time) {
+	m.end_of_life = &t
+}
+
+// EndOfLife returns the value of the "end_of_life" field in the mutation.
+func (m *WorkerMutation) EndOfLife() (r time.Time, exists bool) {
+	v := m.end_of_life
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEndOfLife returns the old "end_of_life" field's value of the Worker entity.
+// If the Worker object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkerMutation) OldEndOfLife(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEndOfLife is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEndOfLife requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEndOfLife: %w", err)
+	}
+	return oldValue.EndOfLife, nil
+}
+
+// ResetEndOfLife resets all changes to the "end_of_life" field.
+func (m *WorkerMutation) ResetEndOfLife() {
+	m.end_of_life = nil
+}
+
+// SetTaskID sets the "task" edge to the Task entity by id.
+func (m *WorkerMutation) SetTaskID(id uuid.UUID) {
+	m.task = &id
+}
+
+// ClearTask clears the "task" edge to the Task entity.
+func (m *WorkerMutation) ClearTask() {
+	m.clearedtask = true
+}
+
+// TaskCleared reports if the "task" edge to the Task entity was cleared.
+func (m *WorkerMutation) TaskCleared() bool {
+	return m.clearedtask
+}
+
+// TaskID returns the "task" edge ID in the mutation.
+func (m *WorkerMutation) TaskID() (id uuid.UUID, exists bool) {
+	if m.task != nil {
+		return *m.task, true
+	}
+	return
+}
+
+// TaskIDs returns the "task" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// TaskID instead. It exists only for internal usage by the builders.
+func (m *WorkerMutation) TaskIDs() (ids []uuid.UUID) {
+	if id := m.task; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetTask resets all changes to the "task" edge.
+func (m *WorkerMutation) ResetTask() {
+	m.task = nil
+	m.clearedtask = false
+}
+
+// Where appends a list predicates to the WorkerMutation builder.
+func (m *WorkerMutation) Where(ps ...predicate.Worker) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WorkerMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WorkerMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Worker, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WorkerMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WorkerMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Worker).
+func (m *WorkerMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WorkerMutation) Fields() []string {
+	fields := make([]string, 0, 1)
+	if m.end_of_life != nil {
+		fields = append(fields, worker.FieldEndOfLife)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WorkerMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case worker.FieldEndOfLife:
+		return m.EndOfLife()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WorkerMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case worker.FieldEndOfLife:
+		return m.OldEndOfLife(ctx)
+	}
+	return nil, fmt.Errorf("unknown Worker field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WorkerMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case worker.FieldEndOfLife:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEndOfLife(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Worker field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WorkerMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WorkerMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WorkerMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Worker numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WorkerMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WorkerMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WorkerMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Worker nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WorkerMutation) ResetField(name string) error {
+	switch name {
+	case worker.FieldEndOfLife:
+		m.ResetEndOfLife()
+		return nil
+	}
+	return fmt.Errorf("unknown Worker field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WorkerMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.task != nil {
+		edges = append(edges, worker.EdgeTask)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WorkerMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case worker.EdgeTask:
+		if id := m.task; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WorkerMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WorkerMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WorkerMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedtask {
+		edges = append(edges, worker.EdgeTask)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WorkerMutation) EdgeCleared(name string) bool {
+	switch name {
+	case worker.EdgeTask:
+		return m.clearedtask
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WorkerMutation) ClearEdge(name string) error {
+	switch name {
+	case worker.EdgeTask:
+		m.ClearTask()
+		return nil
+	}
+	return fmt.Errorf("unknown Worker unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WorkerMutation) ResetEdge(name string) error {
+	switch name {
+	case worker.EdgeTask:
+		m.ResetTask()
+		return nil
+	}
+	return fmt.Errorf("unknown Worker edge %s", name)
 }

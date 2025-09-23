@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"strings"
 
 	"ariga.io/atlas/sql/sqltool"
 	"rezics.com/task-queue/service/task/ent/migrate"
@@ -16,14 +17,17 @@ import (
 	_ "github.com/lib/pq"
 )
 
+const name = "auth"
+
 func main() {
-	shadow := os.Getenv("SHADOW_DATABASE_URL")
-	if shadow == "" {
-		slog.Error("SHADOW_DATABASE_URL is not set")
+	raw_shadow, err := exec.Command("encore", "db", "conn-uri", name, "--shadow").Output()
+	if err != nil {
+		slog.Error("failed getting shadow database URL", "error", err)
 		return
 	}
+	shadow := strings.TrimSpace(string(raw_shadow))
 
-	reset := exec.Command("encore", "db", "reset", "--shadow", "--all")
+	reset := exec.Command("encore", "db", "reset", name, "--shadow")
 	if out, err := reset.CombinedOutput(); err != nil {
 		slog.Error("failed resetting shadow database", "error", err)
 		println(string(out))

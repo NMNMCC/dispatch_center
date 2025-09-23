@@ -1,3 +1,7 @@
+-- reverse: create index "workers_task_worker_key" to table: "workers"
+DROP INDEX "workers_task_worker_key";
+-- reverse: create "workers" table
+DROP TABLE "workers";
 -- reverse: create "tag_tasks" table
 DROP TABLE "tag_tasks";
 -- reverse: create "tasks" table

@@ -16,6 +16,8 @@ type Tx struct {
 	Tag *TagClient
 	// Task is the client for interacting with the Task builders.
 	Task *TaskClient
+	// Worker is the client for interacting with the Worker builders.
+	Worker *WorkerClient
 
 	// lazily loaded.
 	client     *Client
@@ -149,6 +151,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Tag = NewTagClient(tx.config)
 	tx.Task = NewTaskClient(tx.config)
+	tx.Worker = NewWorkerClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.
