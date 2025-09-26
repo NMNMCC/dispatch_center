@@ -3,11 +3,7 @@
     "encore": {
       "type": "stdio",
       "command": "encore",
-      "args": ["mcp", "run", "--app=nh37q"]
-    },
-    "chakra-ui": {
-      "command": "pnpx",
-      "args": ["@chakra-ui/react-mcp"]
+      "args": ["mcp", "run"]
     }
   },
   "inputs": []
