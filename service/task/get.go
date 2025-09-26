@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"rezics.com/task-queue/service/task/ent"
-	"rezics.com/task-queue/service/task/ent/tag"
 	"rezics.com/task-queue/service/task/ent/task"
 	"rezics.com/task-queue/service/task/ent/worker"
 )
@@ -19,11 +18,9 @@ func (s *Service) Get(ctx context.Context, req *GetReq) (*TaskRes, error) {
 	}
 
 	return &TaskRes{
-		ID:        task.ID.String(),
-		Tags:      lo.Map(task.Edges.Tags, func(t *ent.Tag, _ int) string { return t.Name }),
-		Body:      task.Body,
-		CreatedAt: task.CreatedAt,
-		UpdatedAt: task.UpdatedAt,
+		ID:   task.ID.String(),
+		Tags: lo.Map(task.Edges.Tags, func(t *ent.Tag, _ int) string { return t.Name }),
+		Body: task.Body,
 	}, nil
 }
 
@@ -33,31 +30,27 @@ type GetReq struct {
 
 //encore:api auth method=GET path=/task/get/worker
 func (s *Service) GetWorker(ctx context.Context, req *GetWorkerReq) (*WorkerRes, error) {
-	worker, err := s.Database.Worker.Query().WithTask().Where(worker.ID(uuid.MustParse(req.WorkerID))).Only(ctx)
+	raw_worker, err := s.Database.Worker.Query().WithTask().Where(worker.ID(uuid.MustParse(req.WorkerID))).Only(ctx)
 	if err != nil {
 		return nil, ErrUnknown
 	}
 
-	var currentTask TaskRes
-	if worker.Edges.Task != nil {
-		t := worker.Edges.Task
-		tags, err := s.Database.Tag.Query().Where(tag.HasTasksWith(task.ID(t.ID))).All(ctx)
-		if err != nil {
-			return nil, ErrUnknown
-		}
+	worker := &WorkerRes{
+		ID:           raw_worker.ID.String(),
+		RegisteredAt: raw_worker.RegisteredAt,
+	}
 
-		currentTask = TaskRes{
-			ID:   t.ID.String(),
-			Tags: lo.Map(tags, func(tag *ent.Tag, _ int) string { return tag.Name }),
-			Body: t.Body,
+	if raw_worker.Edges.Task != nil {
+		worker.Task = &TaskRes{
+			ID:        raw_worker.Edges.Task.ID.String(),
+			Tags:      lo.Map(raw_worker.Edges.Task.Edges.Tags, func(t *ent.Tag, _ int) string { return t.Name }),
+			Body:      raw_worker.Edges.Task.Body,
+			CreatedAt: raw_worker.Edges.Task.CreatedAt,
+			UpdatedAt: raw_worker.Edges.Task.UpdatedAt,
 		}
 	}
 
-	return &WorkerRes{
-		ID:           worker.ID.String(),
-		RegisteredAt: worker.RegisteredAt,
-		Task:         currentTask,
-	}, nil
+	return worker, nil
 }
 
 type GetWorkerReq struct {

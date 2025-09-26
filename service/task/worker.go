@@ -8,14 +8,30 @@ import (
 
 	"encore.dev/beta/auth"
 	"encore.dev/beta/errs"
+	"encore.dev/middleware"
 	"encore.dev/rlog"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
+	sa "rezics.com/task-queue/service/auth"
+	sas "rezics.com/task-queue/service/auth/ent/schema"
 	"rezics.com/task-queue/service/task/ent"
 	"rezics.com/task-queue/service/task/ent/tag"
 	"rezics.com/task-queue/service/task/ent/task"
 )
+
+//encore:middleware target=tag:worker
+func (s *Service) WorkerAuthMiddleware(req middleware.Request, next middleware.Next) middleware.Response {
+	data, _ := auth.Data().(*sa.AuthData)
+
+	if !slices.Contains(data.Key.Permissions, string(sas.KeyPermissionWorker)) {
+		return middleware.Response{
+			Err: &errs.Error{Code: errs.Unauthenticated, Message: "worker permission required"},
+		}
+	}
+
+	return next(req)
+}
 
 var (
 	ErrWorkerAlreadyExists = &errs.Error{Code: errs.AlreadyExists, Message: "worker already exists"}

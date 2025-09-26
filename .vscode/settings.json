@@ -1,4 +1,21 @@
 {
-  "cSpell.words": ["authhandler", "datasource", "gocron", "oerr", "omitzero", "postgresql", "rlog", "sqldb", "sqljson", "sslmode", "Stdlib", "uuid"],
-  "deno.enable": true
+  "cSpell.words": [
+    "authhandler",
+    "datasource",
+    "entgo",
+    "github",
+    "gocron",
+    "oerr",
+    "omitzero",
+    "postgresql",
+    "refinedev",
+    "rezics",
+    "rlog",
+    "samber",
+    "sqldb",
+    "sqljson",
+    "sslmode",
+    "Stdlib",
+    "uuid"
+  ]
 }

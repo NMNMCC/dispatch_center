@@ -3,7 +3,6 @@
 package ent
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -22,9 +21,28 @@ type User struct {
 	Email string `json:"email,omitempty"`
 	// Password holds the value of the "password" field.
 	Password string `json:"-"`
-	// Tokens holds the value of the "tokens" field.
-	Tokens       []string `json:"-"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserQuery when eager-loading is set.
+	Edges        UserEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// UserEdges holds the relations/edges for other nodes in the graph.
+type UserEdges struct {
+	// Keys holds the value of the keys edge.
+	Keys []*Key `json:"keys,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// KeysOrErr returns the Keys value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) KeysOrErr() ([]*Key, error) {
+	if e.loadedTypes[0] {
+		return e.Keys, nil
+	}
+	return nil, &NotLoadedError{edge: "keys"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -32,8 +50,6 @@ func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldTokens:
-			values[i] = new([]byte)
 		case user.FieldEmail, user.FieldPassword:
 			values[i] = new(sql.NullString)
 		case user.FieldID:
@@ -71,14 +87,6 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Password = value.String
 			}
-		case user.FieldTokens:
-			if value, ok := values[i].(*[]byte); !ok {
-				return fmt.Errorf("unexpected type %T for field tokens", values[i])
-			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &_m.Tokens); err != nil {
-					return fmt.Errorf("unmarshal field tokens: %w", err)
-				}
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -90,6 +98,11 @@ func (_m *User) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *User) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryKeys queries the "keys" edge of the User entity.
+func (_m *User) QueryKeys() *KeyQuery {
+	return NewUserClient(_m.config).QueryKeys(_m)
 }
 
 // Update returns a builder for updating this User.
@@ -119,8 +132,6 @@ func (_m *User) String() string {
 	builder.WriteString(_m.Email)
 	builder.WriteString(", ")
 	builder.WriteString("password=<sensitive>")
-	builder.WriteString(", ")
-	builder.WriteString("tokens=<sensitive>")
 	builder.WriteByte(')')
 	return builder.String()
 }

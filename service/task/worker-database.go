@@ -93,15 +93,21 @@ func (s *Service) Unlock(ctx context.Context, uid, wid, tid uuid.UUID, d time.Du
 	return nil
 }
 
-func (s *Service) Clean(ctx context.Context) error {
+func (s *Service) Clean(ctx context.Context) (int, error) {
 	now := time.Now()
 
-	if err := s.Database.Task.Update().Where(task.HasWorkerWith(worker.EndOfLifeLT(now))).Exec(ctx); err != nil {
-		return err
+	task_count, err := s.Database.Task.Update().Where(task.HasWorkerWith(worker.EndOfLifeLT(now))).Save(ctx)
+	if err != nil {
+		return 0, err
 	}
-	if _, err := s.Database.Worker.Delete().Where(worker.EndOfLifeLT(now)).Exec(ctx); err != nil {
-		return err
+	if task_count == 0 {
+		return 0, nil
 	}
 
-	return nil
+	worker_count, err := s.Database.Worker.Delete().Where(worker.EndOfLifeLT(now)).Exec(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	return worker_count, nil
 }

@@ -14,6 +14,11 @@ import (
 
 //encore:api auth method=GET path=/task/list
 func (s *Service) List(ctx context.Context, req *ListReq) (*ListRes, error) {
+	tx, err := s.Database.Tx(ctx)
+	if err != nil {
+		return nil, ErrUnknown
+	}
+
 	ts, err := s.Database.Task.Query().
 		WithTags().
 		Where(
@@ -28,6 +33,7 @@ func (s *Service) List(ctx context.Context, req *ListReq) (*ListRes, error) {
 		Limit(req.Length).
 		All(ctx)
 	if err != nil {
+		tx.Rollback()
 		return nil, ErrUnknown
 	}
 
@@ -40,6 +46,8 @@ func (s *Service) List(ctx context.Context, req *ListReq) (*ListRes, error) {
 			UpdatedAt: t.UpdatedAt,
 		}
 	})
+
+	tx.Commit()
 
 	return &ListRes{Tasks: out}, nil
 }
@@ -96,30 +104,50 @@ type ListRes struct {
 
 //encore:api auth method=POST path=/task/list/worker
 func (s *Service) ListWorker(ctx context.Context, req *ListWorkerReq) (*ListWorkerRes, error) {
-	raw_workers, err := s.Database.Worker.Query().WithTask().Offset(req.Offset).Limit(req.Length).All(ctx)
+	tx, err := s.Database.Tx(ctx)
 	if err != nil {
 		return nil, ErrUnknown
 	}
 
-	workers := make([]WorkerRes, 0, len(raw_workers))
+	raw_workers, err := tx.Worker.Query().Offset(req.Offset).Limit(req.Length).All(ctx)
+	if err != nil {
+		tx.Rollback()
+		return nil, ErrUnknown
+	}
+
+	workers := make([]*WorkerRes, 0, len(raw_workers))
 	for _, w := range raw_workers {
-		tags, err := w.Edges.Task.QueryTags().Select(tag.FieldName).All(ctx)
+		worker := &WorkerRes{
+			ID:           w.ID.String(),
+			RegisteredAt: w.RegisteredAt,
+		}
+
+		hasTask, err := w.QueryTask().WithTags().Exist(ctx)
 		if err != nil {
+			tx.Rollback()
 			return nil, ErrUnknown
 		}
 
-		workers = append(workers, WorkerRes{
-			ID:           w.ID.String(),
-			RegisteredAt: w.RegisteredAt,
-			Task: TaskRes{
-				ID:        w.Edges.Task.ID.String(),
-				Tags:      lo.Map(tags, func(t *ent.Tag, _ int) string { return t.Name }),
-				Body:      w.Edges.Task.Body,
-				CreatedAt: w.Edges.Task.CreatedAt,
-				UpdatedAt: w.Edges.Task.UpdatedAt,
-			},
-		})
+		if hasTask {
+			task, err := w.QueryTask().WithTags().Only(ctx)
+			if err != nil {
+				tx.Rollback()
+				return nil, ErrUnknown
+			}
+
+			worker.Task = &TaskRes{
+				ID:        task.ID.String(),
+				Tags:      lo.Map(task.Edges.Tags, func(t *ent.Tag, _ int) string { return t.Name }),
+				Body:      task.Body,
+				CreatedAt: task.CreatedAt,
+				UpdatedAt: task.UpdatedAt,
+			}
+		}
+
+		workers = append(workers, worker)
 	}
+
+	tx.Commit()
 
 	return &ListWorkerRes{Workers: workers}, nil
 }
@@ -132,11 +160,11 @@ type ListWorkerReq struct {
 }
 
 type ListWorkerRes struct {
-	Workers []WorkerRes `json:"workers"`
+	Workers []*WorkerRes `json:"workers"`
 }
 
 type WorkerRes struct {
 	ID           string    `json:"id"`
 	RegisteredAt time.Time `json:"registered_at"`
-	Task         TaskRes   `json:"task,omitzero"`
+	Task         *TaskRes  `json:"task,omitzero"`
 }

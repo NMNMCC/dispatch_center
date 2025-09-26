@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
@@ -16,68 +17,84 @@ import (
 	"rezics.com/task-queue/service/auth/ent/user"
 )
 
-// UserCreate is the builder for creating a User entity.
-type UserCreate struct {
+// KeyCreate is the builder for creating a Key entity.
+type KeyCreate struct {
 	config
-	mutation *UserMutation
+	mutation *KeyMutation
 	hooks    []Hook
 	conflict []sql.ConflictOption
 }
 
-// SetEmail sets the "email" field.
-func (_c *UserCreate) SetEmail(v string) *UserCreate {
-	_c.mutation.SetEmail(v)
+// SetBody sets the "body" field.
+func (_c *KeyCreate) SetBody(v string) *KeyCreate {
+	_c.mutation.SetBody(v)
 	return _c
 }
 
-// SetPassword sets the "password" field.
-func (_c *UserCreate) SetPassword(v string) *UserCreate {
-	_c.mutation.SetPassword(v)
+// SetPermissions sets the "permissions" field.
+func (_c *KeyCreate) SetPermissions(v []string) *KeyCreate {
+	_c.mutation.SetPermissions(v)
+	return _c
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (_c *KeyCreate) SetCreatedAt(v time.Time) *KeyCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (_c *KeyCreate) SetNillableCreatedAt(v *time.Time) *KeyCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
+	}
+	return _c
+}
+
+// SetRevokedAt sets the "revoked_at" field.
+func (_c *KeyCreate) SetRevokedAt(v time.Time) *KeyCreate {
+	_c.mutation.SetRevokedAt(v)
 	return _c
 }
 
 // SetID sets the "id" field.
-func (_c *UserCreate) SetID(v uuid.UUID) *UserCreate {
+func (_c *KeyCreate) SetID(v uuid.UUID) *KeyCreate {
 	_c.mutation.SetID(v)
 	return _c
 }
 
 // SetNillableID sets the "id" field if the given value is not nil.
-func (_c *UserCreate) SetNillableID(v *uuid.UUID) *UserCreate {
+func (_c *KeyCreate) SetNillableID(v *uuid.UUID) *KeyCreate {
 	if v != nil {
 		_c.SetID(*v)
 	}
 	return _c
 }
 
-// AddKeyIDs adds the "keys" edge to the Key entity by IDs.
-func (_c *UserCreate) AddKeyIDs(ids ...uuid.UUID) *UserCreate {
-	_c.mutation.AddKeyIDs(ids...)
+// SetUserID sets the "user" edge to the User entity by ID.
+func (_c *KeyCreate) SetUserID(id uuid.UUID) *KeyCreate {
+	_c.mutation.SetUserID(id)
 	return _c
 }
 
-// AddKeys adds the "keys" edges to the Key entity.
-func (_c *UserCreate) AddKeys(v ...*Key) *UserCreate {
-	ids := make([]uuid.UUID, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddKeyIDs(ids...)
+// SetUser sets the "user" edge to the User entity.
+func (_c *KeyCreate) SetUser(v *User) *KeyCreate {
+	return _c.SetUserID(v.ID)
 }
 
-// Mutation returns the UserMutation object of the builder.
-func (_c *UserCreate) Mutation() *UserMutation {
+// Mutation returns the KeyMutation object of the builder.
+func (_c *KeyCreate) Mutation() *KeyMutation {
 	return _c.mutation
 }
 
-// Save creates the User in the database.
-func (_c *UserCreate) Save(ctx context.Context) (*User, error) {
+// Save creates the Key in the database.
+func (_c *KeyCreate) Save(ctx context.Context) (*Key, error) {
 	_c.defaults()
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (_c *UserCreate) SaveX(ctx context.Context) *User {
+func (_c *KeyCreate) SaveX(ctx context.Context) *Key {
 	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
@@ -86,48 +103,60 @@ func (_c *UserCreate) SaveX(ctx context.Context) *User {
 }
 
 // Exec executes the query.
-func (_c *UserCreate) Exec(ctx context.Context) error {
+func (_c *KeyCreate) Exec(ctx context.Context) error {
 	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (_c *UserCreate) ExecX(ctx context.Context) {
+func (_c *KeyCreate) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (_c *UserCreate) defaults() {
+func (_c *KeyCreate) defaults() {
+	if _, ok := _c.mutation.Permissions(); !ok {
+		v := key.DefaultPermissions
+		_c.mutation.SetPermissions(v)
+	}
+	if _, ok := _c.mutation.CreatedAt(); !ok {
+		v := key.DefaultCreatedAt()
+		_c.mutation.SetCreatedAt(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
-		v := user.DefaultID()
+		v := key.DefaultID()
 		_c.mutation.SetID(v)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (_c *UserCreate) check() error {
-	if _, ok := _c.mutation.Email(); !ok {
-		return &ValidationError{Name: "email", err: errors.New(`ent: missing required field "User.email"`)}
+func (_c *KeyCreate) check() error {
+	if _, ok := _c.mutation.Body(); !ok {
+		return &ValidationError{Name: "body", err: errors.New(`ent: missing required field "Key.body"`)}
 	}
-	if v, ok := _c.mutation.Email(); ok {
-		if err := user.EmailValidator(v); err != nil {
-			return &ValidationError{Name: "email", err: fmt.Errorf(`ent: validator failed for field "User.email": %w`, err)}
+	if _, ok := _c.mutation.Permissions(); !ok {
+		return &ValidationError{Name: "permissions", err: errors.New(`ent: missing required field "Key.permissions"`)}
+	}
+	if v, ok := _c.mutation.Permissions(); ok {
+		if err := key.PermissionsValidator(v); err != nil {
+			return &ValidationError{Name: "permissions", err: fmt.Errorf(`ent: validator failed for field "Key.permissions": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.Password(); !ok {
-		return &ValidationError{Name: "password", err: errors.New(`ent: missing required field "User.password"`)}
+	if _, ok := _c.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Key.created_at"`)}
 	}
-	if v, ok := _c.mutation.Password(); ok {
-		if err := user.PasswordValidator(v); err != nil {
-			return &ValidationError{Name: "password", err: fmt.Errorf(`ent: validator failed for field "User.password": %w`, err)}
-		}
+	if _, ok := _c.mutation.RevokedAt(); !ok {
+		return &ValidationError{Name: "revoked_at", err: errors.New(`ent: missing required field "Key.revoked_at"`)}
+	}
+	if len(_c.mutation.UserIDs()) == 0 {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Key.user"`)}
 	}
 	return nil
 }
 
-func (_c *UserCreate) sqlSave(ctx context.Context) (*User, error) {
+func (_c *KeyCreate) sqlSave(ctx context.Context) (*Key, error) {
 	if err := _c.check(); err != nil {
 		return nil, err
 	}
@@ -150,38 +179,47 @@ func (_c *UserCreate) sqlSave(ctx context.Context) (*User, error) {
 	return _node, nil
 }
 
-func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
+func (_c *KeyCreate) createSpec() (*Key, *sqlgraph.CreateSpec) {
 	var (
-		_node = &User{config: _c.config}
-		_spec = sqlgraph.NewCreateSpec(user.Table, sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID))
+		_node = &Key{config: _c.config}
+		_spec = sqlgraph.NewCreateSpec(key.Table, sqlgraph.NewFieldSpec(key.FieldID, field.TypeUUID))
 	)
 	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = &id
 	}
-	if value, ok := _c.mutation.Email(); ok {
-		_spec.SetField(user.FieldEmail, field.TypeString, value)
-		_node.Email = value
+	if value, ok := _c.mutation.Body(); ok {
+		_spec.SetField(key.FieldBody, field.TypeString, value)
+		_node.Body = value
 	}
-	if value, ok := _c.mutation.Password(); ok {
-		_spec.SetField(user.FieldPassword, field.TypeString, value)
-		_node.Password = value
+	if value, ok := _c.mutation.Permissions(); ok {
+		_spec.SetField(key.FieldPermissions, field.TypeJSON, value)
+		_node.Permissions = value
 	}
-	if nodes := _c.mutation.KeysIDs(); len(nodes) > 0 {
+	if value, ok := _c.mutation.CreatedAt(); ok {
+		_spec.SetField(key.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := _c.mutation.RevokedAt(); ok {
+		_spec.SetField(key.FieldRevokedAt, field.TypeTime, value)
+		_node.RevokedAt = value
+	}
+	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: true,
-			Table:   user.KeysTable,
-			Columns: []string{user.KeysColumn},
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   key.UserTable,
+			Columns: []string{key.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(key.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		_node.key_user = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -190,8 +228,8 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
 // of the `INSERT` statement. For example:
 //
-//	client.User.Create().
-//		SetEmail(v).
+//	client.Key.Create().
+//		SetBody(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -199,13 +237,13 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 //		).
 //		// Override some of the fields with custom
 //		// update values.
-//		Update(func(u *ent.UserUpsert) {
-//			SetEmail(v+v).
+//		Update(func(u *ent.KeyUpsert) {
+//			SetBody(v+v).
 //		}).
 //		Exec(ctx)
-func (_c *UserCreate) OnConflict(opts ...sql.ConflictOption) *UserUpsertOne {
+func (_c *KeyCreate) OnConflict(opts ...sql.ConflictOption) *KeyUpsertOne {
 	_c.conflict = opts
-	return &UserUpsertOne{
+	return &KeyUpsertOne{
 		create: _c,
 	}
 }
@@ -213,69 +251,57 @@ func (_c *UserCreate) OnConflict(opts ...sql.ConflictOption) *UserUpsertOne {
 // OnConflictColumns calls `OnConflict` and configures the columns
 // as conflict target. Using this option is equivalent to using:
 //
-//	client.User.Create().
+//	client.Key.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (_c *UserCreate) OnConflictColumns(columns ...string) *UserUpsertOne {
+func (_c *KeyCreate) OnConflictColumns(columns ...string) *KeyUpsertOne {
 	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
-	return &UserUpsertOne{
+	return &KeyUpsertOne{
 		create: _c,
 	}
 }
 
 type (
-	// UserUpsertOne is the builder for "upsert"-ing
-	//  one User node.
-	UserUpsertOne struct {
-		create *UserCreate
+	// KeyUpsertOne is the builder for "upsert"-ing
+	//  one Key node.
+	KeyUpsertOne struct {
+		create *KeyCreate
 	}
 
-	// UserUpsert is the "OnConflict" setter.
-	UserUpsert struct {
+	// KeyUpsert is the "OnConflict" setter.
+	KeyUpsert struct {
 		*sql.UpdateSet
 	}
 )
 
-// SetEmail sets the "email" field.
-func (u *UserUpsert) SetEmail(v string) *UserUpsert {
-	u.Set(user.FieldEmail, v)
-	return u
-}
-
-// UpdateEmail sets the "email" field to the value that was provided on create.
-func (u *UserUpsert) UpdateEmail() *UserUpsert {
-	u.SetExcluded(user.FieldEmail)
-	return u
-}
-
-// SetPassword sets the "password" field.
-func (u *UserUpsert) SetPassword(v string) *UserUpsert {
-	u.Set(user.FieldPassword, v)
-	return u
-}
-
-// UpdatePassword sets the "password" field to the value that was provided on create.
-func (u *UserUpsert) UpdatePassword() *UserUpsert {
-	u.SetExcluded(user.FieldPassword)
-	return u
-}
-
 // UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
 // Using this option is equivalent to using:
 //
-//	client.User.Create().
+//	client.Key.Create().
 //		OnConflict(
 //			sql.ResolveWithNewValues(),
 //			sql.ResolveWith(func(u *sql.UpdateSet) {
-//				u.SetIgnore(user.FieldID)
+//				u.SetIgnore(key.FieldID)
 //			}),
 //		).
 //		Exec(ctx)
-func (u *UserUpsertOne) UpdateNewValues() *UserUpsertOne {
+func (u *KeyUpsertOne) UpdateNewValues() *KeyUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		if _, exists := u.create.mutation.ID(); exists {
-			s.SetIgnore(user.FieldID)
+			s.SetIgnore(key.FieldID)
+		}
+		if _, exists := u.create.mutation.Body(); exists {
+			s.SetIgnore(key.FieldBody)
+		}
+		if _, exists := u.create.mutation.Permissions(); exists {
+			s.SetIgnore(key.FieldPermissions)
+		}
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(key.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.RevokedAt(); exists {
+			s.SetIgnore(key.FieldRevokedAt)
 		}
 	}))
 	return u
@@ -284,79 +310,51 @@ func (u *UserUpsertOne) UpdateNewValues() *UserUpsertOne {
 // Ignore sets each column to itself in case of conflict.
 // Using this option is equivalent to using:
 //
-//	client.User.Create().
+//	client.Key.Create().
 //	    OnConflict(sql.ResolveWithIgnore()).
 //	    Exec(ctx)
-func (u *UserUpsertOne) Ignore() *UserUpsertOne {
+func (u *KeyUpsertOne) Ignore() *KeyUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
 	return u
 }
 
 // DoNothing configures the conflict_action to `DO NOTHING`.
 // Supported only by SQLite and PostgreSQL.
-func (u *UserUpsertOne) DoNothing() *UserUpsertOne {
+func (u *KeyUpsertOne) DoNothing() *KeyUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.DoNothing())
 	return u
 }
 
-// Update allows overriding fields `UPDATE` values. See the UserCreate.OnConflict
+// Update allows overriding fields `UPDATE` values. See the KeyCreate.OnConflict
 // documentation for more info.
-func (u *UserUpsertOne) Update(set func(*UserUpsert)) *UserUpsertOne {
+func (u *KeyUpsertOne) Update(set func(*KeyUpsert)) *KeyUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
-		set(&UserUpsert{UpdateSet: update})
+		set(&KeyUpsert{UpdateSet: update})
 	}))
 	return u
 }
 
-// SetEmail sets the "email" field.
-func (u *UserUpsertOne) SetEmail(v string) *UserUpsertOne {
-	return u.Update(func(s *UserUpsert) {
-		s.SetEmail(v)
-	})
-}
-
-// UpdateEmail sets the "email" field to the value that was provided on create.
-func (u *UserUpsertOne) UpdateEmail() *UserUpsertOne {
-	return u.Update(func(s *UserUpsert) {
-		s.UpdateEmail()
-	})
-}
-
-// SetPassword sets the "password" field.
-func (u *UserUpsertOne) SetPassword(v string) *UserUpsertOne {
-	return u.Update(func(s *UserUpsert) {
-		s.SetPassword(v)
-	})
-}
-
-// UpdatePassword sets the "password" field to the value that was provided on create.
-func (u *UserUpsertOne) UpdatePassword() *UserUpsertOne {
-	return u.Update(func(s *UserUpsert) {
-		s.UpdatePassword()
-	})
-}
-
 // Exec executes the query.
-func (u *UserUpsertOne) Exec(ctx context.Context) error {
+func (u *KeyUpsertOne) Exec(ctx context.Context) error {
 	if len(u.create.conflict) == 0 {
-		return errors.New("ent: missing options for UserCreate.OnConflict")
+		return errors.New("ent: missing options for KeyCreate.OnConflict")
 	}
 	return u.create.Exec(ctx)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (u *UserUpsertOne) ExecX(ctx context.Context) {
+func (u *KeyUpsertOne) ExecX(ctx context.Context) {
 	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // Exec executes the UPSERT query and returns the inserted/updated ID.
-func (u *UserUpsertOne) ID(ctx context.Context) (id uuid.UUID, err error) {
+func (u *KeyUpsertOne) ID(ctx context.Context) (id uuid.UUID, err error) {
 	if u.create.driver.Dialect() == dialect.MySQL {
 		// In case of "ON CONFLICT", there is no way to get back non-numeric ID
 		// fields from the database since MySQL does not support the RETURNING clause.
-		return id, errors.New("ent: UserUpsertOne.ID is not supported by MySQL driver. Use UserUpsertOne.Exec instead")
+		return id, errors.New("ent: KeyUpsertOne.ID is not supported by MySQL driver. Use KeyUpsertOne.Exec instead")
 	}
 	node, err := u.create.Save(ctx)
 	if err != nil {
@@ -366,7 +364,7 @@ func (u *UserUpsertOne) ID(ctx context.Context) (id uuid.UUID, err error) {
 }
 
 // IDX is like ID, but panics if an error occurs.
-func (u *UserUpsertOne) IDX(ctx context.Context) uuid.UUID {
+func (u *KeyUpsertOne) IDX(ctx context.Context) uuid.UUID {
 	id, err := u.ID(ctx)
 	if err != nil {
 		panic(err)
@@ -374,28 +372,28 @@ func (u *UserUpsertOne) IDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// UserCreateBulk is the builder for creating many User entities in bulk.
-type UserCreateBulk struct {
+// KeyCreateBulk is the builder for creating many Key entities in bulk.
+type KeyCreateBulk struct {
 	config
 	err      error
-	builders []*UserCreate
+	builders []*KeyCreate
 	conflict []sql.ConflictOption
 }
 
-// Save creates the User entities in the database.
-func (_c *UserCreateBulk) Save(ctx context.Context) ([]*User, error) {
+// Save creates the Key entities in the database.
+func (_c *KeyCreateBulk) Save(ctx context.Context) ([]*Key, error) {
 	if _c.err != nil {
 		return nil, _c.err
 	}
 	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
-	nodes := make([]*User, len(_c.builders))
+	nodes := make([]*Key, len(_c.builders))
 	mutators := make([]Mutator, len(_c.builders))
 	for i := range _c.builders {
 		func(i int, root context.Context) {
 			builder := _c.builders[i]
 			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-				mutation, ok := m.(*UserMutation)
+				mutation, ok := m.(*KeyMutation)
 				if !ok {
 					return nil, fmt.Errorf("unexpected mutation type %T", m)
 				}
@@ -439,7 +437,7 @@ func (_c *UserCreateBulk) Save(ctx context.Context) ([]*User, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (_c *UserCreateBulk) SaveX(ctx context.Context) []*User {
+func (_c *KeyCreateBulk) SaveX(ctx context.Context) []*Key {
 	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
@@ -448,13 +446,13 @@ func (_c *UserCreateBulk) SaveX(ctx context.Context) []*User {
 }
 
 // Exec executes the query.
-func (_c *UserCreateBulk) Exec(ctx context.Context) error {
+func (_c *KeyCreateBulk) Exec(ctx context.Context) error {
 	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (_c *UserCreateBulk) ExecX(ctx context.Context) {
+func (_c *KeyCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
@@ -463,7 +461,7 @@ func (_c *UserCreateBulk) ExecX(ctx context.Context) {
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
 // of the `INSERT` statement. For example:
 //
-//	client.User.CreateBulk(builders...).
+//	client.Key.CreateBulk(builders...).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -471,13 +469,13 @@ func (_c *UserCreateBulk) ExecX(ctx context.Context) {
 //		).
 //		// Override some of the fields with custom
 //		// update values.
-//		Update(func(u *ent.UserUpsert) {
-//			SetEmail(v+v).
+//		Update(func(u *ent.KeyUpsert) {
+//			SetBody(v+v).
 //		}).
 //		Exec(ctx)
-func (_c *UserCreateBulk) OnConflict(opts ...sql.ConflictOption) *UserUpsertBulk {
+func (_c *KeyCreateBulk) OnConflict(opts ...sql.ConflictOption) *KeyUpsertBulk {
 	_c.conflict = opts
-	return &UserUpsertBulk{
+	return &KeyUpsertBulk{
 		create: _c,
 	}
 }
@@ -485,39 +483,51 @@ func (_c *UserCreateBulk) OnConflict(opts ...sql.ConflictOption) *UserUpsertBulk
 // OnConflictColumns calls `OnConflict` and configures the columns
 // as conflict target. Using this option is equivalent to using:
 //
-//	client.User.Create().
+//	client.Key.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (_c *UserCreateBulk) OnConflictColumns(columns ...string) *UserUpsertBulk {
+func (_c *KeyCreateBulk) OnConflictColumns(columns ...string) *KeyUpsertBulk {
 	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
-	return &UserUpsertBulk{
+	return &KeyUpsertBulk{
 		create: _c,
 	}
 }
 
-// UserUpsertBulk is the builder for "upsert"-ing
-// a bulk of User nodes.
-type UserUpsertBulk struct {
-	create *UserCreateBulk
+// KeyUpsertBulk is the builder for "upsert"-ing
+// a bulk of Key nodes.
+type KeyUpsertBulk struct {
+	create *KeyCreateBulk
 }
 
 // UpdateNewValues updates the mutable fields using the new values that
 // were set on create. Using this option is equivalent to using:
 //
-//	client.User.Create().
+//	client.Key.Create().
 //		OnConflict(
 //			sql.ResolveWithNewValues(),
 //			sql.ResolveWith(func(u *sql.UpdateSet) {
-//				u.SetIgnore(user.FieldID)
+//				u.SetIgnore(key.FieldID)
 //			}),
 //		).
 //		Exec(ctx)
-func (u *UserUpsertBulk) UpdateNewValues() *UserUpsertBulk {
+func (u *KeyUpsertBulk) UpdateNewValues() *KeyUpsertBulk {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		for _, b := range u.create.builders {
 			if _, exists := b.mutation.ID(); exists {
-				s.SetIgnore(user.FieldID)
+				s.SetIgnore(key.FieldID)
+			}
+			if _, exists := b.mutation.Body(); exists {
+				s.SetIgnore(key.FieldBody)
+			}
+			if _, exists := b.mutation.Permissions(); exists {
+				s.SetIgnore(key.FieldPermissions)
+			}
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(key.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.RevokedAt(); exists {
+				s.SetIgnore(key.FieldRevokedAt)
 			}
 		}
 	}))
@@ -527,76 +537,48 @@ func (u *UserUpsertBulk) UpdateNewValues() *UserUpsertBulk {
 // Ignore sets each column to itself in case of conflict.
 // Using this option is equivalent to using:
 //
-//	client.User.Create().
+//	client.Key.Create().
 //		OnConflict(sql.ResolveWithIgnore()).
 //		Exec(ctx)
-func (u *UserUpsertBulk) Ignore() *UserUpsertBulk {
+func (u *KeyUpsertBulk) Ignore() *KeyUpsertBulk {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
 	return u
 }
 
 // DoNothing configures the conflict_action to `DO NOTHING`.
 // Supported only by SQLite and PostgreSQL.
-func (u *UserUpsertBulk) DoNothing() *UserUpsertBulk {
+func (u *KeyUpsertBulk) DoNothing() *KeyUpsertBulk {
 	u.create.conflict = append(u.create.conflict, sql.DoNothing())
 	return u
 }
 
-// Update allows overriding fields `UPDATE` values. See the UserCreateBulk.OnConflict
+// Update allows overriding fields `UPDATE` values. See the KeyCreateBulk.OnConflict
 // documentation for more info.
-func (u *UserUpsertBulk) Update(set func(*UserUpsert)) *UserUpsertBulk {
+func (u *KeyUpsertBulk) Update(set func(*KeyUpsert)) *KeyUpsertBulk {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
-		set(&UserUpsert{UpdateSet: update})
+		set(&KeyUpsert{UpdateSet: update})
 	}))
 	return u
 }
 
-// SetEmail sets the "email" field.
-func (u *UserUpsertBulk) SetEmail(v string) *UserUpsertBulk {
-	return u.Update(func(s *UserUpsert) {
-		s.SetEmail(v)
-	})
-}
-
-// UpdateEmail sets the "email" field to the value that was provided on create.
-func (u *UserUpsertBulk) UpdateEmail() *UserUpsertBulk {
-	return u.Update(func(s *UserUpsert) {
-		s.UpdateEmail()
-	})
-}
-
-// SetPassword sets the "password" field.
-func (u *UserUpsertBulk) SetPassword(v string) *UserUpsertBulk {
-	return u.Update(func(s *UserUpsert) {
-		s.SetPassword(v)
-	})
-}
-
-// UpdatePassword sets the "password" field to the value that was provided on create.
-func (u *UserUpsertBulk) UpdatePassword() *UserUpsertBulk {
-	return u.Update(func(s *UserUpsert) {
-		s.UpdatePassword()
-	})
-}
-
 // Exec executes the query.
-func (u *UserUpsertBulk) Exec(ctx context.Context) error {
+func (u *KeyUpsertBulk) Exec(ctx context.Context) error {
 	if u.create.err != nil {
 		return u.create.err
 	}
 	for i, b := range u.create.builders {
 		if len(b.conflict) != 0 {
-			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the UserCreateBulk instead", i)
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the KeyCreateBulk instead", i)
 		}
 	}
 	if len(u.create.conflict) == 0 {
-		return errors.New("ent: missing options for UserCreateBulk.OnConflict")
+		return errors.New("ent: missing options for KeyCreateBulk.OnConflict")
 	}
 	return u.create.Exec(ctx)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (u *UserUpsertBulk) ExecX(ctx context.Context) {
+func (u *KeyUpsertBulk) ExecX(ctx context.Context) {
 	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}

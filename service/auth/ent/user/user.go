@@ -4,6 +4,7 @@ package user
 
 import (
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -16,10 +17,17 @@ const (
 	FieldEmail = "email"
 	// FieldPassword holds the string denoting the password field in the database.
 	FieldPassword = "password"
-	// FieldTokens holds the string denoting the tokens field in the database.
-	FieldTokens = "tokens"
+	// EdgeKeys holds the string denoting the keys edge name in mutations.
+	EdgeKeys = "keys"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// KeysTable is the table that holds the keys relation/edge.
+	KeysTable = "keys"
+	// KeysInverseTable is the table name for the Key entity.
+	// It exists in this package in order to avoid circular dependency with the "key" package.
+	KeysInverseTable = "keys"
+	// KeysColumn is the table column denoting the keys relation/edge.
+	KeysColumn = "key_user"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -27,7 +35,6 @@ var Columns = []string{
 	FieldID,
 	FieldEmail,
 	FieldPassword,
-	FieldTokens,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -45,10 +52,6 @@ var (
 	EmailValidator func(string) error
 	// PasswordValidator is a validator for the "password" field. It is called by the builders before save.
 	PasswordValidator func(string) error
-	// DefaultTokens holds the default value on creation for the "tokens" field.
-	DefaultTokens []string
-	// TokensValidator is a validator for the "tokens" field. It is called by the builders before save.
-	TokensValidator func([]string) error
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
@@ -69,4 +72,25 @@ func ByEmail(opts ...sql.OrderTermOption) OrderOption {
 // ByPassword orders the results by the password field.
 func ByPassword(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPassword, opts...).ToFunc()
+}
+
+// ByKeysCount orders the results by keys count.
+func ByKeysCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newKeysStep(), opts...)
+	}
+}
+
+// ByKeys orders the results by keys terms.
+func ByKeys(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newKeysStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newKeysStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(KeysInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, KeysTable, KeysColumn),
+	)
 }

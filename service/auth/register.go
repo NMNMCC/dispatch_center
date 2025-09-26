@@ -5,6 +5,7 @@ import (
 
 	"encore.dev/beta/errs"
 	"encore.dev/rlog"
+	"github.com/go-playground/validator/v10"
 )
 
 //encore:api public method=POST path=/auth/register
@@ -35,4 +36,23 @@ func (s *Service) Register(ctx context.Context, req *RegisterReq) error {
 type RegisterReq struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+var (
+	ErrInvalidEmail    = &errs.Error{Code: errs.InvalidArgument, Message: "invalid email"}
+	ErrInvalidPassword = &errs.Error{Code: errs.InvalidArgument, Message: "invalid password"}
+)
+
+func (q *RegisterReq) Validate() error {
+	v := validator.New()
+
+	if err := v.Var(q.Email, "required,email"); err != nil {
+		return ErrInvalidEmail
+	}
+
+	if err := v.Var(q.Password, "required,min=8"); err != nil {
+		return ErrInvalidPassword
+	}
+
+	return nil
 }

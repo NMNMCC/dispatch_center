@@ -9,6 +9,18 @@ import (
 	"rezics.com/task-queue/service/auth/ent"
 )
 
+// The KeyFunc type is an adapter to allow the use of ordinary
+// function as Key mutator.
+type KeyFunc func(context.Context, *ent.KeyMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f KeyFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.KeyMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.KeyMutation", m)
+}
+
 // The UserFunc type is an adapter to allow the use of ordinary
 // function as User mutator.
 type UserFunc func(context.Context, *ent.UserMutation) (ent.Value, error)

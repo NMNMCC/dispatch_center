@@ -9,8 +9,9 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
+	"rezics.com/task-queue/service/auth/ent/key"
 	"rezics.com/task-queue/service/auth/ent/predicate"
 	"rezics.com/task-queue/service/auth/ent/user"
 )
@@ -56,21 +57,45 @@ func (_u *UserUpdate) SetNillablePassword(v *string) *UserUpdate {
 	return _u
 }
 
-// SetTokens sets the "tokens" field.
-func (_u *UserUpdate) SetTokens(v []string) *UserUpdate {
-	_u.mutation.SetTokens(v)
+// AddKeyIDs adds the "keys" edge to the Key entity by IDs.
+func (_u *UserUpdate) AddKeyIDs(ids ...uuid.UUID) *UserUpdate {
+	_u.mutation.AddKeyIDs(ids...)
 	return _u
 }
 
-// AppendTokens appends value to the "tokens" field.
-func (_u *UserUpdate) AppendTokens(v []string) *UserUpdate {
-	_u.mutation.AppendTokens(v)
-	return _u
+// AddKeys adds the "keys" edges to the Key entity.
+func (_u *UserUpdate) AddKeys(v ...*Key) *UserUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddKeyIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
+}
+
+// ClearKeys clears all "keys" edges to the Key entity.
+func (_u *UserUpdate) ClearKeys() *UserUpdate {
+	_u.mutation.ClearKeys()
+	return _u
+}
+
+// RemoveKeyIDs removes the "keys" edge to Key entities by IDs.
+func (_u *UserUpdate) RemoveKeyIDs(ids ...uuid.UUID) *UserUpdate {
+	_u.mutation.RemoveKeyIDs(ids...)
+	return _u
+}
+
+// RemoveKeys removes "keys" edges to Key entities.
+func (_u *UserUpdate) RemoveKeys(v ...*Key) *UserUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveKeyIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -112,11 +137,6 @@ func (_u *UserUpdate) check() error {
 			return &ValidationError{Name: "password", err: fmt.Errorf(`ent: validator failed for field "User.password": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Tokens(); ok {
-		if err := user.TokensValidator(v); err != nil {
-			return &ValidationError{Name: "tokens", err: fmt.Errorf(`ent: validator failed for field "User.tokens": %w`, err)}
-		}
-	}
 	return nil
 }
 
@@ -138,13 +158,50 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Password(); ok {
 		_spec.SetField(user.FieldPassword, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.Tokens(); ok {
-		_spec.SetField(user.FieldTokens, field.TypeJSON, value)
+	if _u.mutation.KeysCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.KeysTable,
+			Columns: []string{user.KeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(key.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if value, ok := _u.mutation.AppendedTokens(); ok {
-		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, user.FieldTokens, value)
-		})
+	if nodes := _u.mutation.RemovedKeysIDs(); len(nodes) > 0 && !_u.mutation.KeysCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.KeysTable,
+			Columns: []string{user.KeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(key.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.KeysIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.KeysTable,
+			Columns: []string{user.KeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(key.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -194,21 +251,45 @@ func (_u *UserUpdateOne) SetNillablePassword(v *string) *UserUpdateOne {
 	return _u
 }
 
-// SetTokens sets the "tokens" field.
-func (_u *UserUpdateOne) SetTokens(v []string) *UserUpdateOne {
-	_u.mutation.SetTokens(v)
+// AddKeyIDs adds the "keys" edge to the Key entity by IDs.
+func (_u *UserUpdateOne) AddKeyIDs(ids ...uuid.UUID) *UserUpdateOne {
+	_u.mutation.AddKeyIDs(ids...)
 	return _u
 }
 
-// AppendTokens appends value to the "tokens" field.
-func (_u *UserUpdateOne) AppendTokens(v []string) *UserUpdateOne {
-	_u.mutation.AppendTokens(v)
-	return _u
+// AddKeys adds the "keys" edges to the Key entity.
+func (_u *UserUpdateOne) AddKeys(v ...*Key) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddKeyIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
+}
+
+// ClearKeys clears all "keys" edges to the Key entity.
+func (_u *UserUpdateOne) ClearKeys() *UserUpdateOne {
+	_u.mutation.ClearKeys()
+	return _u
+}
+
+// RemoveKeyIDs removes the "keys" edge to Key entities by IDs.
+func (_u *UserUpdateOne) RemoveKeyIDs(ids ...uuid.UUID) *UserUpdateOne {
+	_u.mutation.RemoveKeyIDs(ids...)
+	return _u
+}
+
+// RemoveKeys removes "keys" edges to Key entities.
+func (_u *UserUpdateOne) RemoveKeys(v ...*Key) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveKeyIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -263,11 +344,6 @@ func (_u *UserUpdateOne) check() error {
 			return &ValidationError{Name: "password", err: fmt.Errorf(`ent: validator failed for field "User.password": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Tokens(); ok {
-		if err := user.TokensValidator(v); err != nil {
-			return &ValidationError{Name: "tokens", err: fmt.Errorf(`ent: validator failed for field "User.tokens": %w`, err)}
-		}
-	}
 	return nil
 }
 
@@ -306,13 +382,50 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if value, ok := _u.mutation.Password(); ok {
 		_spec.SetField(user.FieldPassword, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.Tokens(); ok {
-		_spec.SetField(user.FieldTokens, field.TypeJSON, value)
+	if _u.mutation.KeysCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.KeysTable,
+			Columns: []string{user.KeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(key.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if value, ok := _u.mutation.AppendedTokens(); ok {
-		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, user.FieldTokens, value)
-		})
+	if nodes := _u.mutation.RemovedKeysIDs(); len(nodes) > 0 && !_u.mutation.KeysCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.KeysTable,
+			Columns: []string{user.KeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(key.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.KeysIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.KeysTable,
+			Columns: []string{user.KeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(key.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &User{config: _u.config}
 	_spec.Assign = _node.assignValues

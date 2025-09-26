@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"encore.dev/rlog"
 	"encore.dev/storage/sqldb"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
@@ -35,7 +36,11 @@ func initService() (*Service, error) {
 
 	service.Clean(context.TODO())
 	scheduler := gocron.NewScheduler(time.UTC)
-	scheduler.Every(time.Second * 5).Do(func() { service.Clean(context.TODO()) })
+	scheduler.Every(time.Second * 5).Do(func() {
+		if count, err := service.Clean(context.TODO()); err == nil && count > 0 {
+			rlog.Info("cleaned up worker", "count", count)
+		}
+	})
 	scheduler.StartAsync()
 
 	return &service, nil

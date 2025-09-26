@@ -1,10 +1,8 @@
 package schema
 
 import (
-	"errors"
-	"slices"
-
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"github.com/go-playground/validator/v10"
 	"rezics.com/task-queue/internal/util"
@@ -23,17 +21,12 @@ func (User) Fields() []ent.Field {
 			return validator.New().Var(s, "required,email")
 		}),
 		field.String("password").Sensitive().NotEmpty(),
-		field.Strings("tokens").Default([]string{}).Sensitive().Validate(func(s []string) error {
-			if slices.Contains(s, "") {
-				return errors.New("token must not be empty")
-			}
-
-			return nil
-		}),
 	}
 }
 
 // Edges of the User.
 func (User) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		edge.From("keys", Key.Type).Ref("user"),
+	}
 }

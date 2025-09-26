@@ -3,7 +3,10 @@
 package ent
 
 import (
+	"time"
+
 	"github.com/google/uuid"
+	"rezics.com/task-queue/service/auth/ent/key"
 	"rezics.com/task-queue/service/auth/ent/schema"
 	"rezics.com/task-queue/service/auth/ent/user"
 )
@@ -12,6 +15,22 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	keyFields := schema.Key{}.Fields()
+	_ = keyFields
+	// keyDescPermissions is the schema descriptor for permissions field.
+	keyDescPermissions := keyFields[2].Descriptor()
+	// key.DefaultPermissions holds the default value on creation for the permissions field.
+	key.DefaultPermissions = keyDescPermissions.Default.([]string)
+	// key.PermissionsValidator is a validator for the "permissions" field. It is called by the builders before save.
+	key.PermissionsValidator = keyDescPermissions.Validators[0].(func([]string) error)
+	// keyDescCreatedAt is the schema descriptor for created_at field.
+	keyDescCreatedAt := keyFields[3].Descriptor()
+	// key.DefaultCreatedAt holds the default value on creation for the created_at field.
+	key.DefaultCreatedAt = keyDescCreatedAt.Default.(func() time.Time)
+	// keyDescID is the schema descriptor for id field.
+	keyDescID := keyFields[0].Descriptor()
+	// key.DefaultID holds the default value on creation for the id field.
+	key.DefaultID = keyDescID.Default.(func() uuid.UUID)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescEmail is the schema descriptor for email field.
@@ -36,12 +55,6 @@ func init() {
 	userDescPassword := userFields[2].Descriptor()
 	// user.PasswordValidator is a validator for the "password" field. It is called by the builders before save.
 	user.PasswordValidator = userDescPassword.Validators[0].(func(string) error)
-	// userDescTokens is the schema descriptor for tokens field.
-	userDescTokens := userFields[3].Descriptor()
-	// user.DefaultTokens holds the default value on creation for the tokens field.
-	user.DefaultTokens = userDescTokens.Default.([]string)
-	// user.TokensValidator is a validator for the "tokens" field. It is called by the builders before save.
-	user.TokensValidator = userDescTokens.Validators[0].(func([]string) error)
 	// userDescID is the schema descriptor for id field.
 	userDescID := userFields[0].Descriptor()
 	// user.DefaultID holds the default value on creation for the id field.

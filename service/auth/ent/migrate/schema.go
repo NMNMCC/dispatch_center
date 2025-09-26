@@ -8,12 +8,34 @@ import (
 )
 
 var (
+	// KeysColumns holds the columns for the "keys" table.
+	KeysColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "body", Type: field.TypeString},
+		{Name: "permissions", Type: field.TypeJSON},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "revoked_at", Type: field.TypeTime},
+		{Name: "key_user", Type: field.TypeUUID},
+	}
+	// KeysTable holds the schema information for the "keys" table.
+	KeysTable = &schema.Table{
+		Name:       "keys",
+		Columns:    KeysColumns,
+		PrimaryKey: []*schema.Column{KeysColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "keys_users_user",
+				Columns:    []*schema.Column{KeysColumns[5]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "email", Type: field.TypeString, Unique: true},
 		{Name: "password", Type: field.TypeString},
-		{Name: "tokens", Type: field.TypeJSON},
 	}
 	// UsersTable holds the schema information for the "users" table.
 	UsersTable = &schema.Table{
@@ -23,9 +45,11 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		KeysTable,
 		UsersTable,
 	}
 )
 
 func init() {
+	KeysTable.ForeignKeys[0].RefTable = UsersTable
 }
