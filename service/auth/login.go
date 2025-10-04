@@ -50,12 +50,12 @@ func (s *Service) Login(ctx context.Context, req *LoginReq) (*LoginRes, error) {
 
 	t := NewKey()
 	if err := tx.Key.Create().SetUser(u).SetBody(t).SetPermissions([]string{
-		string(schema.KeyPermissionCreateKey),
 		string(schema.KeyPermissionCreateTask),
 		string(schema.KeyPermissionReadTask),
 		string(schema.KeyPermissionUpdateTask),
 		string(schema.KeyPermissionDeleteTask),
-	}).SetRevokedAt(time.Now().Add(time.Hour)).Exec(ctx); err != nil {
+		string(schema.KeyPermissionKey),
+	}).SetRevokedAt(time.Now().Add(24 * time.Hour)).Exec(ctx); err != nil {
 		tx.Rollback()
 		return nil, ErrUnknown
 	}

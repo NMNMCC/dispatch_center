@@ -7,7 +7,6 @@ import (
 	"encore.dev/beta/auth"
 	"encore.dev/beta/errs"
 	"encore.dev/rlog"
-	"github.com/google/uuid"
 	"rezics.com/task-queue/service/auth/ent/key"
 )
 
@@ -20,9 +19,14 @@ func (s *Service) AuthHandler(ctx context.Context, token string) (auth.UID, *Aut
 			Code: errs.Unauthenticated,
 		}
 	}
+	if k.RevokedAt.Before(time.Now()) {
+		return "", nil, &errs.Error{
+			Code:    errs.Unauthenticated,
+			Message: "key revoked",
+		}
+	}
 
 	return auth.UID(k.Edges.User.ID.String()), &AuthData{Email: k.Edges.User.Email, Key: &KeyRes{
-		ID:          k.ID,
 		Body:        k.Body,
 		Permissions: k.Permissions,
 		CreatedAt:   k.CreatedAt,
@@ -36,14 +40,12 @@ type AuthData struct {
 }
 
 type KeyRes struct {
-	// ID of the ent.
-	ID uuid.UUID `json:"id,omitempty"`
 	// Body holds the value of the "body" field.
 	Body string `json:"body,omitempty"`
 	// Permissions holds the value of the "permissions" field.
 	Permissions []string `json:"permissions,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitzero"`
 	// RevokedAt holds the value of the "revoked_at" field.
-	RevokedAt time.Time `json:"revoked_at,omitempty"`
+	RevokedAt time.Time `json:"revoked_at,omitzero"`
 }

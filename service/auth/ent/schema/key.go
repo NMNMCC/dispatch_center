@@ -27,11 +27,11 @@ func (Key) Fields() []ent.Field {
 		field.String("body").Immutable(),
 		field.Strings("permissions").Default([]string{}).Immutable().Validate(func(s []string) error {
 			all := []KeyPermission{
-				KeyPermissionCreateKey,
 				KeyPermissionCreateTask,
 				KeyPermissionReadTask,
 				KeyPermissionUpdateTask,
 				KeyPermissionDeleteTask,
+				KeyPermissionKey,
 				KeyPermissionWorker,
 			}
 
@@ -45,18 +45,18 @@ func (Key) Fields() []ent.Field {
 		}),
 
 		field.Time("created_at").Default(time.Now).Immutable(),
-		field.Time("revoked_at").Immutable(),
+		field.Time("revoked_at"),
 	}
 }
 
 type KeyPermission string
 
 const (
-	KeyPermissionCreateKey  KeyPermission = "create:key"
 	KeyPermissionCreateTask KeyPermission = "create:task"
 	KeyPermissionReadTask   KeyPermission = "read:task"
 	KeyPermissionUpdateTask KeyPermission = "update:task"
 	KeyPermissionDeleteTask KeyPermission = "delete:task"
+	KeyPermissionKey        KeyPermission = "key"
 	KeyPermissionWorker     KeyPermission = "worker"
 )
 

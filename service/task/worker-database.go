@@ -96,7 +96,7 @@ func (s *Service) Unlock(ctx context.Context, uid, wid, tid uuid.UUID, d time.Du
 func (s *Service) Clean(ctx context.Context) (int, error) {
 	now := time.Now()
 
-	task_count, err := s.Database.Task.Update().Where(task.HasWorkerWith(worker.EndOfLifeLT(now))).Save(ctx)
+	task_count, err := s.Database.Task.Update().Where(task.HasWorkerWith(worker.EndOfLifeLT(now))).SetStatus(task.StatusFailed).Save(ctx)
 	if err != nil {
 		return 0, err
 	}

@@ -274,6 +274,18 @@ type (
 	}
 )
 
+// SetRevokedAt sets the "revoked_at" field.
+func (u *KeyUpsert) SetRevokedAt(v time.Time) *KeyUpsert {
+	u.Set(key.FieldRevokedAt, v)
+	return u
+}
+
+// UpdateRevokedAt sets the "revoked_at" field to the value that was provided on create.
+func (u *KeyUpsert) UpdateRevokedAt() *KeyUpsert {
+	u.SetExcluded(key.FieldRevokedAt)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
 // Using this option is equivalent to using:
 //
@@ -299,9 +311,6 @@ func (u *KeyUpsertOne) UpdateNewValues() *KeyUpsertOne {
 		}
 		if _, exists := u.create.mutation.CreatedAt(); exists {
 			s.SetIgnore(key.FieldCreatedAt)
-		}
-		if _, exists := u.create.mutation.RevokedAt(); exists {
-			s.SetIgnore(key.FieldRevokedAt)
 		}
 	}))
 	return u
@@ -332,6 +341,20 @@ func (u *KeyUpsertOne) Update(set func(*KeyUpsert)) *KeyUpsertOne {
 		set(&KeyUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetRevokedAt sets the "revoked_at" field.
+func (u *KeyUpsertOne) SetRevokedAt(v time.Time) *KeyUpsertOne {
+	return u.Update(func(s *KeyUpsert) {
+		s.SetRevokedAt(v)
+	})
+}
+
+// UpdateRevokedAt sets the "revoked_at" field to the value that was provided on create.
+func (u *KeyUpsertOne) UpdateRevokedAt() *KeyUpsertOne {
+	return u.Update(func(s *KeyUpsert) {
+		s.UpdateRevokedAt()
+	})
 }
 
 // Exec executes the query.
@@ -526,9 +549,6 @@ func (u *KeyUpsertBulk) UpdateNewValues() *KeyUpsertBulk {
 			if _, exists := b.mutation.CreatedAt(); exists {
 				s.SetIgnore(key.FieldCreatedAt)
 			}
-			if _, exists := b.mutation.RevokedAt(); exists {
-				s.SetIgnore(key.FieldRevokedAt)
-			}
 		}
 	}))
 	return u
@@ -559,6 +579,20 @@ func (u *KeyUpsertBulk) Update(set func(*KeyUpsert)) *KeyUpsertBulk {
 		set(&KeyUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetRevokedAt sets the "revoked_at" field.
+func (u *KeyUpsertBulk) SetRevokedAt(v time.Time) *KeyUpsertBulk {
+	return u.Update(func(s *KeyUpsert) {
+		s.SetRevokedAt(v)
+	})
+}
+
+// UpdateRevokedAt sets the "revoked_at" field to the value that was provided on create.
+func (u *KeyUpsertBulk) UpdateRevokedAt() *KeyUpsertBulk {
+	return u.Update(func(s *KeyUpsert) {
+		s.UpdateRevokedAt()
+	})
 }
 
 // Exec executes the query.

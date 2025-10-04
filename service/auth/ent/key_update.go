@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -24,6 +25,20 @@ type KeyUpdate struct {
 // Where appends a list predicates to the KeyUpdate builder.
 func (_u *KeyUpdate) Where(ps ...predicate.Key) *KeyUpdate {
 	_u.mutation.Where(ps...)
+	return _u
+}
+
+// SetRevokedAt sets the "revoked_at" field.
+func (_u *KeyUpdate) SetRevokedAt(v time.Time) *KeyUpdate {
+	_u.mutation.SetRevokedAt(v)
+	return _u
+}
+
+// SetNillableRevokedAt sets the "revoked_at" field if the given value is not nil.
+func (_u *KeyUpdate) SetNillableRevokedAt(v *time.Time) *KeyUpdate {
+	if v != nil {
+		_u.SetRevokedAt(*v)
+	}
 	return _u
 }
 
@@ -79,6 +94,9 @@ func (_u *KeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
+	if value, ok := _u.mutation.RevokedAt(); ok {
+		_spec.SetField(key.FieldRevokedAt, field.TypeTime, value)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{key.Label}
@@ -97,6 +115,20 @@ type KeyUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *KeyMutation
+}
+
+// SetRevokedAt sets the "revoked_at" field.
+func (_u *KeyUpdateOne) SetRevokedAt(v time.Time) *KeyUpdateOne {
+	_u.mutation.SetRevokedAt(v)
+	return _u
+}
+
+// SetNillableRevokedAt sets the "revoked_at" field if the given value is not nil.
+func (_u *KeyUpdateOne) SetNillableRevokedAt(v *time.Time) *KeyUpdateOne {
+	if v != nil {
+		_u.SetRevokedAt(*v)
+	}
+	return _u
 }
 
 // Mutation returns the KeyMutation object of the builder.
@@ -180,6 +212,9 @@ func (_u *KeyUpdateOne) sqlSave(ctx context.Context) (_node *Key, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.RevokedAt(); ok {
+		_spec.SetField(key.FieldRevokedAt, field.TypeTime, value)
 	}
 	_node = &Key{config: _u.config}
 	_spec.Assign = _node.assignValues
