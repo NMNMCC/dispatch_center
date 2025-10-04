@@ -54,12 +54,7 @@ func (s *Service) CreateKey(ctx context.Context, req *CreateKeyReq) (*CreateKeyR
 
 	uid, _ := auth.UserID()
 
-	tx, err := s.Database.Tx(ctx)
-	if err != nil {
-		return nil, ErrUnknown
-	}
-
-	key, err := tx.Key.
+	key, err := s.Database.Key.
 		Create().
 		SetBody(NewKey()).
 		SetPermissions(req.Permissions).
@@ -67,7 +62,6 @@ func (s *Service) CreateKey(ctx context.Context, req *CreateKeyReq) (*CreateKeyR
 		SetUserID(uuid.MustParse(string(uid))).
 		Save(ctx)
 	if err != nil {
-		tx.Rollback()
 		return nil, ErrUnknown
 	}
 
